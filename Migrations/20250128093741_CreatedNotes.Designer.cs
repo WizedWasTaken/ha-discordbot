@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BotTemplate.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250128052230_UpdatedDeleteBehaviourForStrikes3")]
-    partial class UpdatedDeleteBehaviourForStrikes3
+    [Migration("20250128093741_CreatedNotes")]
+    partial class CreatedNotes
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,31 @@ namespace BotTemplate.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("BotTemplate.BotCore.Entities.Note", b =>
+                {
+                    b.Property<int>("NoteId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NoteId"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("NoteId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.ToTable("Note");
+                });
 
             modelBuilder.Entity("BotTemplate.BotCore.Entities.Strike", b =>
                 {
@@ -36,13 +61,7 @@ namespace BotTemplate.Migrations
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("GivenById")
-                        .HasColumnType("int");
-
                     b.Property<int>("GivenByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("GivenToId")
                         .HasColumnType("int");
 
                     b.Property<int>("GivenToUserId")
@@ -87,6 +106,17 @@ namespace BotTemplate.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("BotTemplate.BotCore.Entities.Note", b =>
+                {
+                    b.HasOne("BotTemplate.BotCore.Entities.User", "CreatedBy")
+                        .WithMany("Notes")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+                });
+
             modelBuilder.Entity("BotTemplate.BotCore.Entities.Strike", b =>
                 {
                     b.HasOne("BotTemplate.BotCore.Entities.User", "GivenBy")
@@ -104,6 +134,11 @@ namespace BotTemplate.Migrations
                     b.Navigation("GivenBy");
 
                     b.Navigation("GivenTo");
+                });
+
+            modelBuilder.Entity("BotTemplate.BotCore.Entities.User", b =>
+                {
+                    b.Navigation("Notes");
                 });
 #pragma warning restore 612, 618
         }

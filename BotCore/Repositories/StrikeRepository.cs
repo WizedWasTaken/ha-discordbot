@@ -9,6 +9,8 @@ namespace BotTemplate.BotCore.Repositories
     public interface IStrikeRepository : IRepository<Strike>
     {
         ICollection<Strike> GetStrikeForUser(User user);
+
+        ICollection<Strike> GetAllStrikes();
     }
 
     public class StrikeRepository : Repository<Strike>, IStrikeRepository
@@ -20,9 +22,21 @@ namespace BotTemplate.BotCore.Repositories
             context = _context;
         }
 
+        public ICollection<Strike> GetAllStrikes()
+        {
+            var res = context.Strikes.Include(x => x.GivenTo).Include(x => x.GivenBy).ToList();
+
+            if (res != null)
+            {
+                return res;
+            }
+
+            return null;
+        }
+
         public ICollection<Strike> GetStrikeForUser(User user)
         {
-            var res = context.Strikes.Where(x => x.GivenTo.DiscordId == user.DiscordId).ToList();
+            var res = context.Strikes.Where(x => x.GivenTo.DiscordId == user.DiscordId).Include(x => x.GivenBy).ToList();
 
             if (res != null)
             {

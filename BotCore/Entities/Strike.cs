@@ -17,15 +17,9 @@ namespace BotTemplate.BotCore.Entities
         public DateTime Date { get; set; } = DateTime.Now;
 
         [Required]
-        public int GivenToId { get; set; }
-
-        [ForeignKey("GivenToId")]
         public User GivenTo { get; set; }
 
         [Required]
-        public int GivenById { get; set; }
-
-        [ForeignKey("GivenById")]
         public User GivenBy { get; set; }
 
         public bool IsStrikeActive()

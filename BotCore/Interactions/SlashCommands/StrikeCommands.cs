@@ -3,6 +3,7 @@ using BotTemplate.BotCore.Entities;
 using BotTemplate.BotCore.Repositories;
 using Discord;
 using Discord.Interactions;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
 
 namespace BotTemplate.BotCore.Interactions.SlashCommands
@@ -30,14 +31,14 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             }
             else
             {
-                if (!ulong.TryParse(personDiscordId, out ulong idToSearch))
+                if (!ulong.TryParse(personDiscordId, out ulong idToSearch) && personDiscordId != "*")
                 {
                     var errorEmbed = new EmbedBuilder()
                         .WithTitle("Fejl")
                         .WithDescription("Indtast et gyldigt heltal for Discord ID.")
                         .WithColor(Color.Red)
                         .Build();
-                    await RespondAsync(embed: errorEmbed);
+                    await RespondAsync(embed: errorEmbed, ephemeral: true);
                     return;
                 }
 
@@ -48,23 +49,68 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                         .WithDescription("Du har ikke tilladelse til at se andres strikes.")
                         .WithColor(Color.Red)
                         .Build();
-                    await RespondAsync(embed: errorEmbed);
+                    await RespondAsync(embed: errorEmbed, ephemeral: true);
                     return;
                 }
+            }
+
+            if (personDiscordId == "*")
+            {
+                var strikes = _strikeRepository.GetAllStrikes();
+                if (strikes != null && strikes.Any())
+                {
+                    var strikeEmbed = new EmbedBuilder()
+                        .WithTitle("Strikes")
+                        .WithDescription($"**Alle Strikes**")
+                        .WithColor(Color.Gold);
+
+                    foreach (var strike in strikes)
+                    {
+                        strikeEmbed.AddField($"Strike ID: {strike.StrikeId}",
+                            $"**Bruger:** {strike.GivenTo.IngameName} (<@{strike.GivenTo.DiscordId}>)\n" +
+                            $"**Grund:** {strike.Reason}\n" +
+                            $"**Dato:** {strike.Date}\n" +
+                            $"**Givet af:** {strike.GivenBy?.IngameName ?? "Ukendt"} (<@{strike.GivenBy?.DiscordId}>)\n" +
+                            $"**Aktiv:** {(strike.IsStrikeActive() ? "Ja" : "Nej")}",
+                            inline: false);
+                    }
+
+                    await RespondAsync(embed: strikeEmbed.Build(), ephemeral: true);
+                }
+                else
+                {
+                    var noStrikesEmbed = new EmbedBuilder()
+                        .WithTitle("Ingen Strikes")
+                        .WithDescription("Der er ingen strikes.")
+                        .WithColor(Color.Gold)
+                        .Build();
+                    await RespondAsync(embed: noStrikesEmbed, ephemeral: true);
+                }
+                return;
             }
 
             var user = _userRepository.GetByDiscordId(ulong.Parse(personDiscordId));
             if (user != null)
             {
                 var strikes = _strikeRepository.GetStrikeForUser(user);
-                if (strikes != null)
+                if (strikes != null && strikes.Any())
                 {
                     var strikeEmbed = new EmbedBuilder()
                         .WithTitle("Strikes")
-                        .WithDescription($"Bruger: {user.IngameName}\nRang: {user.Role}\nDiscord ID: {user.DiscordId}\nTilsluttet: {user.JoinDate.Date}")
-                        .WithColor(Color.Gold)
-                        .Build();
-                    await RespondAsync(embed: strikeEmbed);
+                        .WithDescription($"**Bruger:** {user.IngameName}\n**Tilsluttet:** {user.JoinDate.Date}")
+                        .WithColor(Color.Gold);
+
+                    foreach (var strike in strikes)
+                    {
+                        strikeEmbed.AddField($"Strike ID: {strike.StrikeId}",
+                            $"**Grund:** {strike.Reason}\n" +
+                            $"**Dato:** {strike.Date}\n" +
+                            $"**Givet af:** {strike.GivenBy?.IngameName ?? "Ukendt"} (<@{strike.GivenBy?.DiscordId}>)\n" +
+                            $"**Aktiv:** {(strike.IsStrikeActive() ? "Ja" : "Nej")}",
+                            inline: false);
+                    }
+
+                    await RespondAsync(embed: strikeEmbed.Build(), ephemeral: true);
                 }
                 else
                 {
@@ -73,7 +119,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                         .WithDescription("Brugeren har ingen strikes.")
                         .WithColor(Color.Gold)
                         .Build();
-                    await RespondAsync(embed: noStrikesEmbed);
+                    await RespondAsync(embed: noStrikesEmbed, ephemeral: true);
                 }
             }
             else
@@ -83,7 +129,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithDescription("Bruger ikke fundet.")
                     .WithColor(Color.Red)
                     .Build();
-                await RespondAsync(embed: notFoundEmbed);
+                await RespondAsync(embed: notFoundEmbed, ephemeral: true);
             }
         }
 
@@ -98,7 +144,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithDescription("Indtast et gyldigt heltal for Discord ID.")
                     .WithColor(Color.Red)
                     .Build();
-                await RespondAsync(embed: errorEmbed);
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
                 return;
             }
 
@@ -109,7 +155,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithDescription("Indtast en grund for straffen.")
                     .WithColor(Color.Red)
                     .Build();
-                await RespondAsync(embed: errorEmbed);
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
                 return;
             }
 
@@ -122,7 +168,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithDescription("Giver ikke fundet.")
                     .WithColor(Color.Red)
                     .Build();
-                await RespondAsync(embed: notFoundEmbed);
+                await RespondAsync(embed: notFoundEmbed, ephemeral: true);
                 return;
             }
 
@@ -138,13 +184,12 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
 
                 _strikeRepository.Add(strike);
 
-                _strikeRepository.Add(strike);
                 var successEmbed = new EmbedBuilder()
                     .WithTitle("Strike Oprettet")
                     .WithDescription($"Strike oprettet succesfuldt.")
                     .WithColor(Color.Gold)
                     .Build();
-                await RespondAsync(embed: successEmbed);
+                await RespondAsync(embed: successEmbed, ephemeral: true);
             }
             else
             {
@@ -153,7 +198,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithDescription("Bruger ikke fundet.")
                     .WithColor(Color.Red)
                     .Build();
-                await RespondAsync(embed: notFoundEmbed);
+                await RespondAsync(embed: notFoundEmbed, ephemeral: true);
             }
         }
 
@@ -167,7 +212,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithDescription("Indtast et gyldigt heltal for Strike ID.")
                     .WithColor(Color.Red)
                     .Build();
-                await RespondAsync(embed: errorEmbed);
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
                 return;
             }
 
@@ -180,7 +225,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithDescription($"Strike fjernet succesfuldt.")
                     .WithColor(Color.Gold)
                     .Build();
-                await RespondAsync(embed: successEmbed);
+                await RespondAsync(embed: successEmbed, ephemeral: true);
             }
             else
             {
@@ -189,7 +234,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithDescription("Strike ikke fundet.")
                     .WithColor(Color.Red)
                     .Build();
-                await RespondAsync(embed: notFoundEmbed);
+                await RespondAsync(embed: notFoundEmbed, ephemeral: true);
             }
         }
     }

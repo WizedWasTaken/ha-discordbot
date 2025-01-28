@@ -24,5 +24,8 @@ namespace BotTemplate.BotCore.Entities
 
         [Required]
         public DateTime JoinDate { get; set; } = DateTime.Now;
+
+        [Required]
+        public ICollection<Note> Notes { get; set; }
     }
 }

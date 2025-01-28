@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BotTemplate.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250128051950_AddedStrikesUpdated")]
-    partial class AddedStrikesUpdated
+    [Migration("20250128091011_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -86,13 +86,13 @@ namespace BotTemplate.Migrations
                     b.HasOne("BotTemplate.BotCore.Entities.User", "GivenBy")
                         .WithMany()
                         .HasForeignKey("GivenByUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("BotTemplate.BotCore.Entities.User", "GivenTo")
                         .WithMany()
                         .HasForeignKey("GivenToUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("GivenBy");
