@@ -10,6 +10,8 @@ namespace BotTemplate.BotCore.Repositories
     {
         ICollection<Strike> GetStrikeForUser(User user);
 
+        Strike GetStrike(int id);
+
         ICollection<Strike> GetAllStrikes();
     }
 
@@ -25,6 +27,18 @@ namespace BotTemplate.BotCore.Repositories
         public ICollection<Strike> GetAllStrikes()
         {
             var res = context.Strikes.Include(x => x.GivenTo).Include(x => x.GivenBy).ToList();
+
+            if (res != null)
+            {
+                return res;
+            }
+
+            return null;
+        }
+
+        public Strike GetStrike(int id)
+        {
+            var res = context.Strikes.Where(x => x.StrikeId == id).Include(x => x.GivenTo).Include(x => x.GivenBy).FirstOrDefault();
 
             if (res != null)
             {

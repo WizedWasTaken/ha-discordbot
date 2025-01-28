@@ -41,8 +41,11 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 string discordToken = builder.Configuration.GetValue<string>("DISCORD_TOKEN") ?? throw new InvalidOperationException("MISSING DISCORD_TOKEN; check .env file.");
 builder.Services.AddSerilog();
 
+// builder.Services.AddDbContext<DataContext>(options =>
+//     options.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=DiscordBotDB;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False"));
+
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=DiscordBotDB;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False"));
+    options.UseSqlServer("Data Source=mssql-db.noahnielsen.dk;Initial Catalog=DiscordBotDB;User ID=sa;Password=NoahsMSSQLDatabase123!;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False"));
 
 DataContext dataContext;
 
@@ -78,6 +81,15 @@ builder.Services.AddSingleton(p => new InteractionService(p.GetRequiredService<D
 builder.Services.AddScoped<IRepository<User>, Repository<User>>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IStrikeRepository, StrikeRepository>();
+
+builder.Services.AddHostedService<StrikeListService>(provider =>
+{
+    var logger = provider.GetRequiredService<ILogger<StrikeListService>>();
+    var discordClient = provider.GetRequiredService<DiscordSocketClient>();
+    ulong channelId = 1324100662073753726; // Replace with your channel ID
+    ulong messageId = 0; // Replace with your message ID (initially set to 0 or a known message ID)
+    return new StrikeListService(logger, provider, discordClient, channelId, messageId);
+});
 
 // Configure CommandService for handling traditional text-based commands (e.g., !help)
 // This is separate from InteractionService as it handles different types of commands

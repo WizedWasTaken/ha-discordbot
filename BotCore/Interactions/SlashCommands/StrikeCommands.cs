@@ -5,6 +5,7 @@ using Discord;
 using Discord.Interactions;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace BotTemplate.BotCore.Interactions.SlashCommands
 {
@@ -42,7 +43,8 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     return;
                 }
 
-                if (!Context.Interaction.Permissions.Administrator)
+                var socketUser = Context.Interaction.User as SocketGuildUser;
+                if (!socketUser.GuildPermissions.BanMembers)
                 {
                     var errorEmbed = new EmbedBuilder()
                         .WithTitle("Fejl")
@@ -159,6 +161,11 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 return;
             }
 
+            if (givenById == null)
+            {
+                givenById = Context.Interaction.User.Id.ToString();
+            }
+
             var user = _userRepository.GetByDiscordId(idToSearch);
             var givenBy = givenById != null ? _userRepository.GetByDiscordId(ulong.Parse(givenById)) : null;
             if (givenById != null && givenBy == null)
@@ -190,6 +197,20 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithColor(Color.Gold)
                     .Build();
                 await RespondAsync(embed: successEmbed, ephemeral: true);
+
+                // Send DM to the user
+                var socketUser = Context.Client.GetUser(user.DiscordId);
+                if (socketUser != null)
+                {
+                    var dmEmbed = new EmbedBuilder()
+                        .WithTitle("Du har modtaget en strike")
+                        .WithDescription($"**Grund:** {reason}\n" +
+                                         $"**Dato:** {strike.Date}\n" +
+                                         $"**Givet af:** {givenBy?.IngameName ?? "Ukendt"} (<@{givenBy?.DiscordId}>)")
+                        .WithColor(Color.Red)
+                        .Build();
+                    await socketUser.SendMessageAsync(embed: dmEmbed);
+                }
             }
             else
             {
@@ -216,7 +237,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 return;
             }
 
-            var strike = _strikeRepository.GetById(idToRemove);
+            var strike = _strikeRepository.GetStrike(idToRemove);
             if (strike != null)
             {
                 _strikeRepository.Delete(strike.StrikeId);
@@ -225,6 +246,21 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithDescription($"Strike fjernet succesfuldt.")
                     .WithColor(Color.Gold)
                     .Build();
+
+                // Send DM to the user
+                var socketUser = Context.Client.GetUser(strike.GivenTo.DiscordId);
+                if (socketUser != null)
+                {
+                    var dmEmbed = new EmbedBuilder()
+                        .WithTitle("Du har fået fjernet en strike.")
+                        .WithDescription($"**Grund:** {strike.Reason}\n" +
+                                         $"**Dato:** {strike.Date}\n" +
+                                         $"**Givet af:** {strike.GivenBy?.IngameName ?? "Ukendt"} (<@{strike.GivenBy?.DiscordId}>)")
+                        .WithColor(Color.Red)
+                        .Build();
+                    await socketUser.SendMessageAsync(embed: dmEmbed);
+                }
+
                 await RespondAsync(embed: successEmbed, ephemeral: true);
             }
             else
