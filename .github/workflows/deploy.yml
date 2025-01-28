@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: List files in workspace
+        run: ls -R
+
       - name: Check out repository
         uses: actions/checkout@v4
 
