@@ -4,18 +4,18 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the solution and project files to the container
+# Copy the solution file and project files to the container
 COPY BotTemplate.sln ./
-COPY src/BotTemplate.csproj ./src/
+COPY BotTemplate.csproj ./
 
 # Restore the dependencies
-RUN dotnet restore ./src/BotTemplate.csproj
+RUN dotnet restore ./BotTemplate.csproj
 
 # Copy the rest of the application files
 COPY . ./
 
 # Build the application
-RUN dotnet publish ./src/BotTemplate.csproj -c Release -o /app/publish
+RUN dotnet publish ./BotTemplate.csproj -c Release -o /app/publish
 
 # Use the official .NET 8.0 runtime image for the runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base

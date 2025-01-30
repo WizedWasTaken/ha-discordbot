@@ -1,5 +1,3 @@
-Folder PATH listing
-Volume serial number is 0ADB-1B5D
 D:.
 |   .env
 |   .gitattributes
@@ -12,21 +10,23 @@ D:.
 |   LICENSE.txt
 |   Program.cs
 |   README.md
-|   
+|
 +---.github
 |   \---workflows
 |           deploy.yml
-|           
-+---bin
-|   \---Debug
-|       \---net8.0
-|           |   Azure.Core.dll
-|           |   Azure.Identity.dll
-|           |   BotTemplate.deps.json
-|           |   BotTemplate.dll
-|           |   BotTemplate.exe
-|           |   BotTemplate.pdb
-|           |   BotTemplate.runtimeconfig.json
+|
++---BotCore
+|   +---DataAccess
+|   |       DataContext.cs
+|   |
+|   +---Entities
+|   |       Note.cs
+|   |       Role.cs
+|   |       Strike.cs
+|   |       User.cs
+|   |
+|   +---EventHandlers
+|   |       UserEvents.cs
 |           |   Discord.Net.Commands.dll
 |           |   Discord.Net.Core.dll
 |           |   Discord.Net.Interactions.dll
