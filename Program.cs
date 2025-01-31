@@ -41,11 +41,11 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 string discordToken = builder.Configuration.GetValue<string>("DISCORD_TOKEN") ?? throw new InvalidOperationException("MISSING DISCORD_TOKEN; check .env file.");
 builder.Services.AddSerilog();
 
-// builder.Services.AddDbContext<DataContext>(options =>
-//     options.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=DiscordBotDB;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False"));
-
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseSqlServer("Data Source=mssql-db.noahnielsen.dk;Initial Catalog=DiscordBotDB;User ID=sa;Password=NoahsMSSQLDatabase123!;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False"));
+    options.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=DiscordBotDB;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False"));
+
+//builder.Services.AddDbContext<DataContext>(options =>
+//    options.UseSqlServer("Data Source=mssql-db.noahnielsen.dk;Initial Catalog=DiscordBotDB;User ID=sa;Password=NoahsMSSQLDatabase123!;Connect Timeout=30;Encrypt=False;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False"));
 
 DataContext dataContext;
 
@@ -78,9 +78,11 @@ builder.Services.AddSingleton(new DiscordSocketClient(new DiscordSocketConfig
 // Configure InteractionService for handling interactions from commands, buttons, modals, and selects
 builder.Services.AddSingleton(p => new InteractionService(p.GetRequiredService<DiscordSocketClient>()));
 
-builder.Services.AddScoped<IRepository<User>, Repository<User>>();
+builder.Services.AddScoped<IRepository<Weapon>, Repository<Weapon>>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IStrikeRepository, StrikeRepository>();
+builder.Services.AddScoped<IEventRepository, EventRepository>();
+builder.Services.AddScoped<IBoughtWeaponRepository, BoughtWeaponRepository>();
 
 builder.Services.AddHostedService<StrikeListService>(provider =>
 {

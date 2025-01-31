@@ -15,6 +15,8 @@ namespace BotTemplate.BotCore.Repositories
 
         void Delete(int id);
 
+        void Delete(T entity);
+
         T GetById(int id);
 
         IEnumerable<T> GetAll();
@@ -29,35 +31,35 @@ namespace BotTemplate.BotCore.Repositories
             _context = context;
         }
 
-        public void Add(T entity)
+        public virtual void Add(T entity)
         {
             _context.Add(entity);
             _context.SaveChanges();
         }
 
-        public void Delete(T entity)
+        public virtual void Delete(T entity)
         {
             _context.Remove(entity);
             _context.SaveChanges();
         }
 
-        public void Delete(int id)
+        public virtual void Delete(int id)
         {
             T entity = GetById(id);
             Delete(entity);
         }
 
-        public IEnumerable<T> GetAll()
+        public virtual IEnumerable<T> GetAll()
         {
             return _context.Set<T>().ToList();
         }
 
-        public T GetById(int id)
+        public virtual T GetById(int id)
         {
             return _context.Find<T>(id);
         }
 
-        public void Update(T entity)
+        public virtual void Update(T entity)
         {
             _context.Update(entity);
             _context.SaveChanges();

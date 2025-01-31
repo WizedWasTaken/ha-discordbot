@@ -1,4 +1,9 @@
-﻿using Discord.Interactions;
+﻿using BotTemplate.BotCore.Entities;
+using Discord.Interactions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace BotTemplate.BotCore.Interactions.AutoComplete
 {
@@ -13,8 +18,14 @@ namespace BotTemplate.BotCore.Interactions.AutoComplete
         public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction,
             IParameterInfo parameter, IServiceProvider services)
         {
-            IEnumerable<AutocompleteResult> results = [];
-            List<string> options = ["Option1", "Option2", "Option3", "Option4", "Option5"];
+            IEnumerable<AutocompleteResult> results = Enumerable.Empty<AutocompleteResult>();
+            List<string> options = new List<string>();
+
+            // Use EventType enum values as options for the "test" parameter.
+            foreach (var eventType in Enum.GetValues(typeof(EventType)))
+            {
+                options.Add(eventType.ToString());
+            }
 
             // You can add more cases for each autocomplete you want to generate. Look at Slash Commands for the "test" example.
             switch (parameter.Name)
@@ -25,10 +36,18 @@ namespace BotTemplate.BotCore.Interactions.AutoComplete
                         .Take(25)
                         .ToList();
                     break;
+
+                case "eventType":
+                    results = options
+                        .Select(option => new AutocompleteResult(option, option))
+                        .Take(25)
+                        .ToList();
+                    break;
+
                 default:
                     break;
             }
-            // Return the results, limited to 25 because Discord is dumb.
+            // Return the results, limited to 25 because Discord limits the number of autocomplete results.
             return AutocompletionResult.FromSuccess(results.Take(25));
         }
     }

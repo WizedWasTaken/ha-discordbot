@@ -13,6 +13,10 @@ namespace BotTemplate.BotCore.DataAccess
         public DbSet<User> Users { get; set; }
 
         public DbSet<Strike> Strikes { get; set; }
+        public DbSet<Event> Events { get; set; }
+        public DbSet<BoughtWeapon> BoughtWeapons { get; set; }
+        public DbSet<Weapon> Weapons { get; set; }
+        public DbSet<Note> Notes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

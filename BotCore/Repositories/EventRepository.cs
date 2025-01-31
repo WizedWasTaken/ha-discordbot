@@ -1,0 +1,114 @@
+using BotTemplate.BotCore.DataAccess;
+using BotTemplate.BotCore.Entities;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace BotTemplate.BotCore.Repositories
+{
+    public interface IEventRepository : IRepository<Event>
+    {
+        Event GetLatest();
+
+        ICollection<Event> GetParticipating(ulong userId);
+
+        ICollection<Event> GetDeclined(ulong userId);
+
+        Event GetByTitle(string title);
+
+        ICollection<Event> GetActive();
+
+        Event AddWithReturn(Event entity);
+    }
+
+    public class EventRepository : Repository<Event>, IEventRepository
+    {
+        private readonly DataContext context;
+
+        public EventRepository(DataContext _context) : base(_context)
+        {
+            context = _context;
+        }
+
+        public ICollection<Event> GetDeclined(ulong userId)
+        {
+            var res = context.Events.Where(x => x.Absent.Any(y => y.DiscordId == userId)).Include(x => x.MadeBy).ToList();
+
+            if (res != null)
+            {
+                return res;
+            }
+
+            return null;
+        }
+
+        public Event GetLatest()
+        {
+            var res = context.Events.Include(x => x.MadeBy).FirstOrDefault();
+
+            if (res != null)
+            {
+                return res;
+            }
+
+            return null;
+        }
+
+        public ICollection<Event> GetParticipating(ulong userId)
+        {
+            var res = context.Events.Where(x => x.Participants.Any(y => y.DiscordId == userId)).Include(x => x.MadeBy).ToList();
+
+            if (res != null)
+            {
+                return res;
+            }
+
+            return null;
+        }
+
+        public ICollection<Event> GetActive()
+        {
+            var res = context.Events.Where(x => x.EventDate > System.DateTime.Now).Include(x => x.MadeBy).ToList();
+
+            if (res != null)
+            {
+                return res;
+            }
+
+            return null;
+        }
+
+        public override ICollection<Event> GetAll()
+        {
+            return context.Events.Include(x => x.MadeBy).ToList();
+        }
+
+        public Event GetByTitle(string title)
+        {
+            var res = context.Events.Where(x => x.EventTitle == title).Include(x => x.MadeBy).FirstOrDefault();
+
+            if (res != null)
+            {
+                return res;
+            }
+
+            return null;
+        }
+
+        public Event AddWithReturn(Event entity)
+        {
+            context.Events.Add(entity);
+            context.SaveChanges();
+            return context.Events.Include(e => e.MadeBy).FirstOrDefault(e => e.EventTitle == entity.EventTitle && e.EventDate == entity.EventDate);
+        }
+
+        public override Event GetById(int id)
+        {
+            return context.Events
+                .Include(e => e.MadeBy)
+                .Include(e => e.Participants)
+                .Include(e => e.Absent)
+                .FirstOrDefault(e => e.EventId == id);
+        }
+    }
+}
