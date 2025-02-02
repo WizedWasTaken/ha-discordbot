@@ -33,11 +33,17 @@ namespace BotTemplate.Migrations
                     b.Property<int>("Amount")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("Delivered")
-                        .HasColumnType("datetime2");
+                    b.Property<bool>("DeliveredToUser")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("EventId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("Ordered")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("Paid")
+                        .HasColumnType("bit");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -46,6 +52,8 @@ namespace BotTemplate.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("BoughtWeaponId");
+
+                    b.HasIndex("EventId");
 
                     b.HasIndex("UserId");
 
@@ -77,8 +85,9 @@ namespace BotTemplate.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("EventType")
-                        .HasColumnType("int");
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("MadeByUserId")
                         .HasColumnType("int");
@@ -196,9 +205,8 @@ namespace BotTemplate.Migrations
                     b.Property<int>("WeaponLimit")
                         .HasColumnType("int");
 
-                    b.Property<string>("WeaponName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("WeaponName")
+                        .HasColumnType("int");
 
                     b.Property<int>("WeaponPrice")
                         .HasColumnType("int");
@@ -210,6 +218,10 @@ namespace BotTemplate.Migrations
 
             modelBuilder.Entity("BotTemplate.BotCore.Entities.BoughtWeapon", b =>
                 {
+                    b.HasOne("BotTemplate.BotCore.Entities.Event", null)
+                        .WithMany("WeaponsBought")
+                        .HasForeignKey("EventId");
+
                     b.HasOne("BotTemplate.BotCore.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -284,6 +296,8 @@ namespace BotTemplate.Migrations
                     b.Navigation("Absent");
 
                     b.Navigation("Participants");
+
+                    b.Navigation("WeaponsBought");
                 });
 
             modelBuilder.Entity("BotTemplate.BotCore.Entities.User", b =>

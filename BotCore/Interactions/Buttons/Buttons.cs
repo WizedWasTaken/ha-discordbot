@@ -3,20 +3,107 @@ using BotTemplate.BotCore.Repositories;
 using Microsoft.Extensions.Logging;
 using BotTemplate.BotCore.Entities;
 using Discord;
+using System.Globalization;
+using BotTemplate.BotCore.Services;
 
 namespace BotTemplate.BotCore.Interactions.Buttons
 {
     public class Buttons : InteractionsCore
     {
         private readonly IEventRepository _eventRepository;
+        private readonly IBoughtWeaponRepository _boughtWeaponRepository;
         private readonly IUserRepository _userRepository;
         private readonly ILogger<Buttons> _logger;
+        private readonly BandeBuyService _bandeBuyService;
 
-        public Buttons(IEventRepository eventRepository, ILogger<Buttons> logger, IUserRepository userRepository)
+        public Buttons(IEventRepository eventRepository, ILogger<Buttons> logger, IUserRepository userRepository, IBoughtWeaponRepository boughtWeaponRepository, BandeBuyService bandeBuyService)
         {
             _eventRepository = eventRepository;
             _logger = logger;
             _userRepository = userRepository;
+            _boughtWeaponRepository = boughtWeaponRepository;
+            _bandeBuyService = bandeBuyService;
+        }
+
+        [ComponentInteraction("confirm_order_*", runMode: RunMode.Async)]
+        public async Task ConfirmOrder()
+        {
+            await DeferAsync(ephemeral: true);
+            await DeleteOriginalResponseAsync();
+            // Cast the interaction to SocketMessageComponent to get access to the CustomId.
+            var componentInteraction = (SocketMessageComponent)Context.Interaction;
+            var customId = componentInteraction.Data.CustomId; // e.g., "confirm_order_Pistol9mm_3"
+
+            var parts = customId.Split('_');
+            if (parts.Length < 4)
+            {
+                await FollowupAsync("Der opstod en fejl under behandlingen af din bestilling.", ephemeral: true);
+                return;
+            }
+
+            // Here, parts[2] is the weapon name and parts[3] is the weapon amount.
+            if (!Enum.TryParse<WeaponName>(parts[2], out var weaponName))
+            {
+                await FollowupAsync("Ugyldigt våben navn.", ephemeral: true);
+                return;
+            }
+
+            if (!int.TryParse(parts[3], out int weaponAmount))
+            {
+                await FollowupAsync("Ugyldigt antal våben.", ephemeral: true);
+                return;
+            }
+
+            // Proceed with the rest of your logic...
+            var user = _userRepository.GetByDiscordId(Context.User.Id);
+            var weapon = _boughtWeaponRepository.GetWeaponByName(weaponName);
+            if (user == null || weapon == null)
+            {
+                await FollowupAsync("Der opstod en fejl under behandlingen af din bestilling.", ephemeral: true);
+                return;
+            }
+
+            var latestBandeBuyEvent = await _eventRepository.GetLatestBandeBuyEventAsync();
+            if (latestBandeBuyEvent == null)
+            {
+                await FollowupAsync("Der er ikke nogen bande buy event.", ephemeral: true);
+                return;
+            }
+
+            // Check if the weapon already exists in the WeaponsBought collection
+            var existingBoughtWeapon = latestBandeBuyEvent.WeaponsBought
+                .FirstOrDefault(bw => bw.Weapon.WeaponName == weaponName && bw.User.UserId == user.UserId);
+
+            if (existingBoughtWeapon != null)
+            {
+                // Update the existing BoughtWeapon entity
+                existingBoughtWeapon.Amount += weaponAmount;
+            }
+            else
+            {
+                // Create a new BoughtWeapon entity
+                var boughtWeapon = new BoughtWeapon
+                {
+                    Weapon = weapon,
+                    Amount = weaponAmount,
+                    User = user
+                };
+
+                latestBandeBuyEvent.WeaponsBought.Add(boughtWeapon);
+            }
+
+            _eventRepository.Update(latestBandeBuyEvent);
+
+            await FollowupAsync($"Dine {weaponAmount} {weaponName} er tilføjet til bestillingen. Det koster dig {(weapon.WeaponPrice * weaponAmount).ToString("N0", new CultureInfo("de-DE"))}.", ephemeral: true);
+            _bandeBuyService.ReloadMessage();
+        }
+
+        [ComponentInteraction("cancel_order_*", runMode: RunMode.Async)]
+        public async Task CancelOrder()
+        {
+            await DeleteOriginalResponseAsync();
+            await RespondAsync("Din bestilling er blevet annulleret.", ephemeral: true);
+            _bandeBuyService.ReloadMessage();
         }
 
         [ComponentInteraction("event_coming:*", runMode: RunMode.Async)]

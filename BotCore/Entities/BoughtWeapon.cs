@@ -23,9 +23,13 @@ namespace BotTemplate.BotCore.Entities
         [Required]
         public DateTime Ordered { get; set; } = DateTime.Now;
 
-        public DateTime Delivered { get; set; }
+        [Required]
+        public bool Paid { get; set; }
 
         [Required]
         public int Amount { get; set; }
+
+        [Required]
+        public bool DeliveredToUser { get; set; }
     }
 }

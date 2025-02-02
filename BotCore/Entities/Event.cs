@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BotTemplate.BotCore.Entities
 {
@@ -28,10 +25,8 @@ namespace BotTemplate.BotCore.Entities
         [Required]
         public User MadeBy { get; set; }
 
-        [Required]
         public ICollection<User> Participants { get; set; } = new List<User>();
 
-        [Required]
         public ICollection<User> Absent { get; set; } = new List<User>();
 
         [Required]
@@ -39,6 +34,18 @@ namespace BotTemplate.BotCore.Entities
 
         [Required]
         public string MessageID { get; set; } = "";
+
+        public List<BoughtWeapon> WeaponsBought { get; set; } = new List<BoughtWeapon>();
+
+        public bool CanAddWeaponToEvent()
+        {
+            if (EventType != EventType.BandeBuy)
+            {
+                return false;
+            }
+
+            return true;
+        }
     }
 
     public enum EventType

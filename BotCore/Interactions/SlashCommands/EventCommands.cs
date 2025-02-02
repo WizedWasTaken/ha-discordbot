@@ -227,7 +227,10 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             if (channel != null)
             {
                 var message = await channel.GetMessageAsync(ulong.Parse(eventToDelete.MessageID));
-                await message.DeleteAsync();
+                if (message != null)
+                {
+                    await message.DeleteAsync();
+                }
             }
 
             // Delete the event from the database

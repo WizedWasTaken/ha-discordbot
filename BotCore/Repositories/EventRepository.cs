@@ -3,6 +3,7 @@ using BotTemplate.BotCore.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace BotTemplate.BotCore.Repositories
 {
@@ -19,6 +20,10 @@ namespace BotTemplate.BotCore.Repositories
         ICollection<Event> GetActive();
 
         Event AddWithReturn(Event entity);
+
+        Event GetLatestBandeBuyEvent();
+
+        Task<Event> GetLatestBandeBuyEventAsync();
     }
 
     public class EventRepository : Repository<Event>, IEventRepository
@@ -109,6 +114,45 @@ namespace BotTemplate.BotCore.Repositories
                 .Include(e => e.Participants)
                 .Include(e => e.Absent)
                 .FirstOrDefault(e => e.EventId == id);
+        }
+
+        public Event GetLatestBandeBuyEvent()
+        {
+            return context.Events
+                .Include(e => e.MadeBy)
+                .Include(e => e.WeaponsBought)
+                    .ThenInclude(bw => bw.User)
+                    .Include(e => e.WeaponsBought)
+                    .ThenInclude(bw => bw.Weapon)
+                .FirstOrDefault(e => e.EventType == EventType.BandeBuy);
+        }
+
+        public async Task<Event> GetLatestBandeBuyEventAsync()
+        {
+            return await context.Events
+                .Include(e => e.MadeBy)
+                .Include(e => e.WeaponsBought)
+                    .ThenInclude(wp => wp.User)
+                .Include(e => e.WeaponsBought)
+                    .ThenInclude(wp => wp.Weapon)
+                .Where(e => e.EventType == EventType.BandeBuy && e.EventDate > System.DateTime.Now)
+                .OrderBy(e => e.EventDate)
+                .FirstOrDefaultAsync();
+        }
+
+        public override void Delete(Event entity)
+        {
+            // Ensure related BoughtWeapons are loaded
+            context.Entry(entity).Collection(e => e.WeaponsBought).Load();
+
+            // Manually remove related BoughtWeapons
+            var boughtWeapons = entity.WeaponsBought;
+            context.BoughtWeapons.RemoveRange(boughtWeapons);
+            context.SaveChanges();
+
+            // Now remove the Event
+            context.Events.Remove(entity);
+            context.SaveChanges();
         }
     }
 }

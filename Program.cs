@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
+using BotTemplate.BotCore.Services;
 
 // This is the main entry point of the application and uses top-level statements instead of a traditional Main method.
 // Top-level statements allow for a more concise and streamlined setup, especially for simple applications.
@@ -34,6 +35,7 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
     .AddDotNetEnv(Path.Combine(Directory.GetCurrentDirectory(), "../../../.env")) // You can change this path if needed.
     .AddUserSecrets<Program>()
     .Build();
+
 // This is a flexible way to set up dependency injection, logging, and configuration for the bot.
 // DI allows for components to be loosely coupled and easily swapped. This is needed for the Interaction Framework to be setup properly.
 // Learn about how to scale your bot with DI https://docs.discordnet.dev/guides/dependency_injection/basics.html
@@ -84,6 +86,12 @@ builder.Services.AddScoped<IStrikeRepository, StrikeRepository>();
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 builder.Services.AddScoped<IBoughtWeaponRepository, BoughtWeaponRepository>();
 
+// Change Buttons service to Scoped
+builder.Services.AddScoped<Buttons>();
+
+// Add our command handler as a singleton service
+builder.Services.AddSingleton<CommandHandler>();
+
 builder.Services.AddHostedService<StrikeListService>(provider =>
 {
     var logger = provider.GetRequiredService<ILogger<StrikeListService>>();
@@ -92,6 +100,19 @@ builder.Services.AddHostedService<StrikeListService>(provider =>
     ulong messageId = 0; // Replace with your message ID (initially set to 0 or a known message ID)
     return new StrikeListService(logger, provider, discordClient, channelId, messageId);
 });
+
+builder.Services.AddSingleton<BandeBuyService>(provider =>
+{
+    var logger = provider.GetRequiredService<ILogger<BandeBuyService>>();
+    var serviceProvider = provider.GetRequiredService<IServiceProvider>();
+    var discordClient = provider.GetRequiredService<DiscordSocketClient>();
+    ulong channelId = 1333307808824688652; // Replace with your channel ID
+    ulong messageId = 0; // Replace with your message ID (initially set to 0 or a known message ID)
+    IEventRepository eventRepository = provider.GetRequiredService<IEventRepository>();
+    return new BandeBuyService(logger, serviceProvider, discordClient, channelId, messageId, eventRepository);
+});
+
+builder.Services.AddHostedService(provider => provider.GetRequiredService<BandeBuyService>());
 
 // Configure CommandService for handling traditional text-based commands (e.g., !help)
 // This is separate from InteractionService as it handles different types of commands
@@ -107,8 +128,6 @@ builder.Services.AddSingleton(new CommandService(new CommandServiceConfig
 // Add our command handler as a singleton service
 // This service will process messages and execute traditional text commands
 builder.Services.AddSingleton<CommandHandler>();
-// Add other bot components so they can be passed between each other
-builder.Services.AddSingleton<Buttons>();
 // IHost represents the running application and its services that you just configured above.
 IHost host = builder.Build();
 

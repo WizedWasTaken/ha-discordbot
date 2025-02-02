@@ -31,6 +31,10 @@ namespace BotTemplate.BotCore.DataAccess
                 .WithMany()
                 .HasForeignKey("GivenByUserId")
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Event>()
+                .Property(e => e.EventType)
+                .HasConversion<string>(); // Storing enum as string
         }
     }
 }

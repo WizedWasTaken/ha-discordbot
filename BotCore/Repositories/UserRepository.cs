@@ -12,6 +12,8 @@ namespace BotTemplate.BotCore.Repositories
     public interface IUserRepository : IRepository<User>
     {
         User GetByDiscordId(ulong discordId);
+
+        Task<User> GetByDiscordIdAsync(ulong discordId);
     }
 
     public class UserRepository : Repository<User>, IUserRepository
@@ -26,6 +28,17 @@ namespace BotTemplate.BotCore.Repositories
         public User GetByDiscordId(ulong discordId)
         {
             var res = context.Users.Where(x => x.DiscordId == discordId).FirstOrDefault();
+            if (res != null)
+            {
+                return res;
+            }
+
+            return null;
+        }
+
+        public async Task<User> GetByDiscordIdAsync(ulong discordId)
+        {
+            var res = await context.Users.Where(x => x.DiscordId == discordId).FirstOrDefaultAsync();
             if (res != null)
             {
                 return res;

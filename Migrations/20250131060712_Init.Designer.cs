@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BotTemplate.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250130235937_AddedEvents2")]
-    partial class AddedEvents2
+    [Migration("20250131060712_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -39,6 +39,12 @@ namespace BotTemplate.Migrations
                     b.Property<DateTime>("Delivered")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("DeliveredToUser")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("EventId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("Ordered")
                         .HasColumnType("datetime2");
 
@@ -49,6 +55,8 @@ namespace BotTemplate.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("BoughtWeaponId");
+
+                    b.HasIndex("EventId");
 
                     b.HasIndex("UserId");
 
@@ -80,11 +88,16 @@ namespace BotTemplate.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("EventType")
-                        .HasColumnType("int");
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("MadeByUserId")
                         .HasColumnType("int");
+
+                    b.Property<string>("MessageID")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("EventId");
 
@@ -195,9 +208,8 @@ namespace BotTemplate.Migrations
                     b.Property<int>("WeaponLimit")
                         .HasColumnType("int");
 
-                    b.Property<string>("WeaponName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("WeaponName")
+                        .HasColumnType("int");
 
                     b.Property<int>("WeaponPrice")
                         .HasColumnType("int");
@@ -209,6 +221,10 @@ namespace BotTemplate.Migrations
 
             modelBuilder.Entity("BotTemplate.BotCore.Entities.BoughtWeapon", b =>
                 {
+                    b.HasOne("BotTemplate.BotCore.Entities.Event", null)
+                        .WithMany("WeaponsBought")
+                        .HasForeignKey("EventId");
+
                     b.HasOne("BotTemplate.BotCore.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -283,6 +299,8 @@ namespace BotTemplate.Migrations
                     b.Navigation("Absent");
 
                     b.Navigation("Participants");
+
+                    b.Navigation("WeaponsBought");
                 });
 
             modelBuilder.Entity("BotTemplate.BotCore.Entities.User", b =>
