@@ -7,11 +7,12 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy the project file and restore dependencies
-COPY BotTemplate.csproj .
+COPY BotCore/BotCore.csproj ./BotCore/
+WORKDIR /src/BotCore
 RUN dotnet restore
 
 # Copy everything else and build the bot
-COPY . .
+COPY . .  
 RUN dotnet publish -c Release -o /app/publish
 
 # Create final image with runtime only
@@ -23,4 +24,4 @@ COPY --from=build /app/publish .
 ENV DISCORD_TOKEN=${DISCORD_TOKEN}
 
 # Run the bot
-ENTRYPOINT ["dotnet", "BotTemplate.dll"]
+ENTRYPOINT ["dotnet", "BotCore.dll"]

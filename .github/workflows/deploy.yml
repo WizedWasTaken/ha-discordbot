@@ -41,6 +41,7 @@ jobs:
           tags: ${{ env.API_IMAGE_URL }}
           build-args: |
             DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }}
+        
 
       - name: Deploy Backend to CapRover
         uses: caprover/deploy-from-github@v1.1.2
