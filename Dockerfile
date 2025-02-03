@@ -1,33 +1,25 @@
-# Use the official .NET 8.0 SDK image for the build stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-
-# Set the working directory in the container
-WORKDIR /app
-
-# Copy the solution file and project files to the container
-COPY BotTemplate.sln ./
-COPY BotTemplate.csproj ./
-
-# Restore the dependencies
-RUN dotnet restore ./BotTemplate.csproj
-
-# Copy the rest of the application files
-COPY . ./
-
-# Build the application
-RUN dotnet publish ./BotTemplate.csproj -c Release -o /app/publish
-
-# Use the official .NET 8.0 runtime image for the runtime stage
+# Use official .NET 8.0 runtime as base image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy the published application from the build stage
+# Use .NET 8.0 SDK to build the bot
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy the project file and restore dependencies
+COPY BotTemplate.csproj ./
+RUN dotnet restore
+
+# Copy everything else and build the bot
+COPY . .
+RUN dotnet publish -c Release -o /app/publish
+
+# Create final image with runtime only
+FROM base AS final
+WORKDIR /app
 COPY --from=build /app/publish .
 
-# Expose the necessary port
-EXPOSE 5000
+ENV DISCORD_TOKEN="MTMzMzMwMDU3NDA1MzA3NzA0Mg.G6U9y8.7dfeOA4Z4lIAd9fMtk-qWyHsIu6TLtd7FMnNwk"
 
-# Command to run the application
+# Run the bot
 ENTRYPOINT ["dotnet", "BotTemplate.dll"]
