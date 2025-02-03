@@ -96,7 +96,7 @@ builder.Services.AddHostedService<StrikeListService>(provider =>
 {
     var logger = provider.GetRequiredService<ILogger<StrikeListService>>();
     var discordClient = provider.GetRequiredService<DiscordSocketClient>();
-    ulong channelId = 1335783333006938132; // Replace with your channel ID
+    ulong channelId = 1324100662073753726; // Replace with your channel ID
     ulong messageId = 0; // Replace with your message ID (initially set to 0 or a known message ID)
     return new StrikeListService(logger, provider, discordClient, channelId, messageId);
 });
@@ -106,7 +106,7 @@ builder.Services.AddSingleton<BandeBuyService>(provider =>
     var logger = provider.GetRequiredService<ILogger<BandeBuyService>>();
     var serviceProvider = provider.GetRequiredService<IServiceProvider>();
     var discordClient = provider.GetRequiredService<DiscordSocketClient>();
-    ulong channelId = 1333307808824688652; // Replace with your channel ID
+    ulong channelId = 1335783333006938132; // Replace with your channel ID
     ulong messageId = 0; // Replace with your message ID (initially set to 0 or a known message ID)
     IEventRepository eventRepository = provider.GetRequiredService<IEventRepository>();
     return new BandeBuyService(logger, serviceProvider, discordClient, channelId, messageId, eventRepository);
