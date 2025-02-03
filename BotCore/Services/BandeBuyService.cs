@@ -99,7 +99,7 @@ namespace BotTemplate.BotCore.Services
                         var paid = group.All(item => item.Paid);
                         var delivered = group.All(item => item.DeliveredToUser);
 
-                        embedBuilder.AddField($"**__{buyerName}__**", $"Våben bestilling pris: {totalPrice}\nBetalt: {(paid ? "Ja" : "Nej")}\nLeveret: {(delivered ? "Ja" : "Nej")}", inline: false);
+                        embedBuilder.AddField($"**__{buyerName}__**", $"**Våben bestilling pris:** {totalPrice}\n**Betalt:** {(paid ? "Ja" : "Nej")}\n**Leveret:** {(delivered ? "Ja" : "Nej")}", inline: false);
                         embedBuilder.AddField("Våben", buyerItems, inline: false);
                     }
 
