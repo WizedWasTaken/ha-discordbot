@@ -116,7 +116,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             }
 
             // Send the embed in the specified channel with @everyone mention
-            var channel = Context.Client.GetChannel(1334674825033027594) as IMessageChannel;
+            var channel = Context.Client.GetChannel(1335783333006938132) as IMessageChannel;
             if (channel != null)
             {
                 var message = await channel.SendMessageAsync("@everyone", embed: embed.Build(), components: componentBuilder.Build());
@@ -223,7 +223,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             }
 
             // Delete the channel message
-            var channel = Context.Client.GetChannel(1334674825033027594) as IMessageChannel;
+            var channel = Context.Client.GetChannel(1335783333006938132) as IMessageChannel;
             if (channel != null)
             {
                 var message = await channel.GetMessageAsync(ulong.Parse(eventToDelete.MessageID));
