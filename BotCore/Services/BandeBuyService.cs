@@ -103,10 +103,19 @@ namespace BotTemplate.BotCore.Services
                         embedBuilder.AddField("Våben", buyerItems, inline: false);
                     }
 
-                    var listOfAllWeaponsAndAmountOrdered = string.Join("\n", weaponsBought.Select(item =>
+                    var groupedWeapons = weaponsBought
+                        .GroupBy(item => item.Weapon.WeaponName)
+                        .Select(group => new
+                        {
+                            WeaponName = group.Key,
+                            TotalAmount = group.Sum(item => item.Amount),
+                            WeaponLimit = group.First().Weapon.WeaponLimit
+                        });
+
+                    var listOfAllWeaponsAndAmountOrdered = string.Join("\n", groupedWeapons.Select(group =>
                     {
-                        var percentage = (double)item.Amount / item.Weapon.WeaponLimit * 100;
-                        return $"**{item.Weapon.WeaponName}** - {item.Amount} ({percentage:F2}%)";
+                        var percentage = (double)group.TotalAmount / group.WeaponLimit * 100;
+                        return $"**{group.WeaponName}** - {group.TotalAmount} ({percentage:F2}%)";
                     }));
 
                     embedBuilder.AddField("\n\n\n\n**__Våben liste__**\n\n", $"\n{listOfAllWeaponsAndAmountOrdered}", inline: false);
