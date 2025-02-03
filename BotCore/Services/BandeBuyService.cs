@@ -94,7 +94,7 @@ namespace BotTemplate.BotCore.Services
                     foreach (var group in groupedItems)
                     {
                         var buyerName = group.Key;
-                        var buyerItems = string.Join("", group.Select(item => $"**Våben navn:** {item.Weapon.WeaponName} | **Antal:** {item.Amount}\n"));
+                        var buyerItems = string.Join("", group.Select(item => $"**Våben:** {item.Weapon.WeaponName} | **Antal:** {item.Amount}\n"));
                         var totalPrice = group.Sum(item => item.Weapon.WeaponPrice * item.Amount).ToString("N0", new CultureInfo("de-DE"));
                         var paid = group.All(item => item.Paid);
                         var delivered = group.All(item => item.DeliveredToUser);
