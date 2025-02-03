@@ -115,7 +115,7 @@ namespace BotTemplate.BotCore.Services
                     var listOfAllWeaponsAndAmountOrdered = string.Join("\n", groupedWeapons.Select(group =>
                     {
                         var percentage = (double)group.TotalAmount / group.WeaponLimit * 100;
-                        return $"**{group.WeaponName}** - {group.TotalAmount} ({percentage:F2}%)";
+                        return $"**{group.WeaponName}** | **Antal:** {group.TotalAmount} stk. ({percentage:F2}%)";
                     }));
 
                     embedBuilder.AddField("\n\n\n\n**__Våben liste__**\n\n", $"\n{listOfAllWeaponsAndAmountOrdered}", inline: false);

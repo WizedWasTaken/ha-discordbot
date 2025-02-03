@@ -347,10 +347,6 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 return;
             }
 
-            var isAdmin = socketUser.GuildPermissions.BanMembers;
-            var isSgtAtArms = socketUser.Roles.Any(x => x.Name == "SGT At Arms");
-            var isBandebuyAdgang = socketUser.Roles.Any(x => x.Name == "Bandebuy Adgang");
-
             var helpEmbed = new EmbedBuilder()
                 .WithTitle("Bande Buy Hjælp")
                 .WithDescription("Her er en liste over kommandoer til bande buy.")
@@ -382,7 +378,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
         public async Task SeeWeapons()
         {
             var weapons = _weaponRepository.GetAll();
-            var weaponList = string.Join("\n", weapons.Select(x => $"**{x.WeaponName}** - Pris: {x.WeaponPrice} - Limit: {x.WeaponLimit}"));
+            var weaponList = string.Join("\n", weapons.Select(x => $"**{x.WeaponName}** - Pris: {x.WeaponPrice.ToString("N0", new CultureInfo("de-DE"))} - Limit: {x.WeaponLimit}"));
 
             var socketUser = Context.Interaction.User as SocketGuildUser;
 
