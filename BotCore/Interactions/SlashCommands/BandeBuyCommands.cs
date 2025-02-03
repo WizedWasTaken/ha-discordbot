@@ -342,6 +342,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
 
             if (socketUser == null)
             {
+                _logger.LogError("Failed to get SocketGuildUser from Context.Interaction.User.");
                 await RespondAsync("Der skete en fejl. Prøv igen senere.", ephemeral: true);
                 return;
             }
@@ -365,12 +366,13 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             try
             {
                 await socketUser.SendMessageAsync(embed: helpEmbed);
+                _logger.LogInformation("Help message sent to user {UserId} in DM.", socketUser.Id);
                 await RespondAsync("Hjælpebeskeden er sendt til din DM.", ephemeral: true);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to send help message to user {UserId} in DM.", socketUser.Id);
                 await RespondAsync("Kunne ikke sende DM. Tjek dine DM-indstillinger og prøv igen.", ephemeral: true);
-                _logger.LogError(ex, "Failed to send help message to user in DM.");
             }
         }
     }

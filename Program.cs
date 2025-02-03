@@ -96,7 +96,7 @@ builder.Services.AddHostedService<StrikeListService>(provider =>
 {
     var logger = provider.GetRequiredService<ILogger<StrikeListService>>();
     var discordClient = provider.GetRequiredService<DiscordSocketClient>();
-    ulong channelId = 1324100662073753726; // Replace with your channel ID
+    ulong channelId = 1335783333006938132; // Replace with your channel ID
     ulong messageId = 0; // Replace with your message ID (initially set to 0 or a known message ID)
     return new StrikeListService(logger, provider, discordClient, channelId, messageId);
 });
