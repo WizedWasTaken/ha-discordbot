@@ -187,7 +187,7 @@ namespace BotTemplate.BotCore.Interactions.Buttons
 
         private async Task UpdateEventMessage(Event eventEntity)
         {
-            var channel = Context.Client.GetChannel(1334674825033027594) as IMessageChannel;
+            var channel = Context.Client.GetChannel(1335783333006938132) as IMessageChannel;
             if (channel != null)
             {
                 var message = await channel.GetMessageAsync(ulong.Parse(eventEntity.MessageID)) as IUserMessage;
