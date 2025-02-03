@@ -45,7 +45,6 @@
 .idea/
 
 # Project files
-*.csproj
 *.vbproj
 *.fsproj
 *.xproj
