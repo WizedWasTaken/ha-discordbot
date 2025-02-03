@@ -7,12 +7,14 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy the project file and restore dependencies
-COPY BotCore/BotTemplate.csproj ./BotCore/
-WORKDIR /src/BotCore
+# Restore dependencies using a separate layer
+COPY ["BotTemplate.csproj", "."]
+WORKDIR /src
 RUN dotnet restore
 
+
 # Copy everything else and build the bot
-COPY . .  
+COPY . .
 RUN dotnet publish -c Release -o /app/publish
 
 # Create final image with runtime only
@@ -20,8 +22,7 @@ FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Set Discord token using environment variable
 ENV DISCORD_TOKEN=${DISCORD_TOKEN}
 
 # Run the bot
-ENTRYPOINT ["dotnet", "BotCore.dll"]
+ENTRYPOINT ["dotnet", "BotTemplate.dll"]
