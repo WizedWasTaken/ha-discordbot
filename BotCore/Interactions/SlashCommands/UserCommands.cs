@@ -20,19 +20,30 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
         }
 
         [SlashCommand("opret", "Opretter en ny bruger")]
-        [RequireUserPermission(GuildPermission.ManageGuild)]
-        public async Task CreateUserAsync(string ingameName, Role role, string discordId = null, DateTime? joinDate = null)
+        public async Task CreateUserAsync(string ingameName, Role role, DateTime? joinDate = null)
         {
+            var userDiscordId = Context.User.Id.ToString();
+
             ulong idToCreate;
-            if (discordId == null)
-            {
-                idToCreate = Context.User.Id;
-            }
-            else if (!ulong.TryParse(discordId, out idToCreate))
+
+            if (!ulong.TryParse(userDiscordId, out idToCreate))
             {
                 var errorEmbed = new EmbedBuilder()
                     .WithTitle("Fejl")
-                    .WithDescription("Indtast et gyldigt heltal for Discord ID.")
+                    .WithDescription("Kunne ikke finde Discord ID.")
+                    .WithColor(Color.Red)
+                    .Build();
+                await RespondAsync(embed: errorEmbed);
+                return;
+            }
+
+            var userExists = _userRepository.GetByDiscordId(idToCreate);
+
+            if (userExists != null)
+            {
+                var errorEmbed = new EmbedBuilder()
+                    .WithTitle("Fejl")
+                    .WithDescription("Bruger med dette Discord ID eksisterer allerede.")
                     .WithColor(Color.Red)
                     .Build();
                 await RespondAsync(embed: errorEmbed);
