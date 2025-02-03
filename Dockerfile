@@ -7,7 +7,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy the project file and restore dependencies
-COPY BotCore/BotCore.csproj ./BotCore/
+COPY BotCore/BotTemplate.csproj ./BotCore/
 WORKDIR /src/BotCore
 RUN dotnet restore
 
