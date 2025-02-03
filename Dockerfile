@@ -7,8 +7,11 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy the project file and restore dependencies
-COPY BotTemplate.csproj ./
+# Restore dependencies using a separate layer
+COPY ["BotTemplate.csproj", "src/"]
+WORKDIR /src
 RUN dotnet restore
+
 
 # Copy everything else and build the bot
 COPY . .
@@ -19,7 +22,7 @@ FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-ENV DISCORD_TOKEN="MTMzMzMwMDU3NDA1MzA3NzA0Mg.G6U9y8.7dfeOA4Z4lIAd9fMtk-qWyHsIu6TLtd7FMnNwk"
+ENV DISCORD_TOKEN=${DISCORD_TOKEN}
 
 # Run the bot
 ENTRYPOINT ["dotnet", "BotTemplate.dll"]
