@@ -99,7 +99,7 @@ namespace BotTemplate.BotCore.Services
                         var paid = group.All(item => item.Paid);
                         var delivered = group.All(item => item.DeliveredToUser);
 
-                        embedBuilder.AddField($"**__{buyerName}__**", $"**Våben bestilling pris:** {totalPrice}\n**Betalt:** {(paid ? "Ja" : "Nej")}\n**Leveret:** {(delivered ? "Ja" : "Nej")}", inline: false);
+                        embedBuilder.AddField($"\n\n**__{buyerName}__**", $"**Våben bestilling pris:** {totalPrice}\n**Betalt:** {(paid ? "Ja" : "Nej")}\n**Leveret:** {(delivered ? "Ja" : "Nej")}", inline: false);
                         embedBuilder.AddField("Våben", buyerItems, inline: false);
                     }
 
@@ -109,7 +109,7 @@ namespace BotTemplate.BotCore.Services
                         return $"**{item.Weapon.WeaponName}** - {item.Amount} ({percentage:F2}%)";
                     }));
 
-                    embedBuilder.AddField("\n\n**__Våben liste__**\n\n", $"\n{listOfAllWeaponsAndAmountOrdered}", inline: false);
+                    embedBuilder.AddField("\n\n\n\n**__Våben liste__**\n\n", $"\n{listOfAllWeaponsAndAmountOrdered}", inline: false);
 
                     var embed = embedBuilder.Build();
 
