@@ -360,6 +360,8 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 .AddField("ispayed", "Marker at en bruger har betalt for våben.\nKræver: Admin", inline: false)
                 .AddField("isdelivered", "Marker alle våben som leveret.\nKræver: Admin", inline: false)
                 .AddField("removeweapon", "Slet våben fra dine våben bestillinger.\nKræver: Bandebuy Adgang", inline: false)
+                .AddField("help", "Få hjælp til bande buy.", inline: false)
+                .AddField("seeweapons", "Se alle våben samt. priser i DM.", inline: false)
                 .WithColor(Color.Green)
                 .Build();
 
@@ -372,6 +374,34 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send help message to user {UserId} in DM.", socketUser.Id);
+                await RespondAsync("Kunne ikke sende DM. Tjek dine DM-indstillinger og prøv igen.", ephemeral: true);
+            }
+        }
+
+        [SlashCommand("seeweapons", "Se alle våben samt. priser i DM")]
+        public async Task SeeWeapons()
+        {
+            var weapons = _weaponRepository.GetAll();
+            var weaponList = string.Join("\n", weapons.Select(x => $"**{x.WeaponName}** - Pris: {x.WeaponPrice} - Limit: {x.WeaponLimit}"));
+
+            var socketUser = Context.Interaction.User as SocketGuildUser;
+
+            if (socketUser == null)
+            {
+                _logger.LogError("Failed to get SocketGuildUser from Context.Interaction.User.");
+                await RespondAsync("Der skete en fejl. Prøv igen senere.", ephemeral: true);
+                return;
+            }
+
+            try
+            {
+                await socketUser.SendMessageAsync($"Her er en liste over alle våben:\n{weaponList}");
+                _logger.LogInformation("Weapon list sent to user {UserId} in DM.", socketUser.Id);
+                await RespondAsync("Våbenlisten er sendt til din DM.", ephemeral: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send weapon list to user {UserId} in DM.", socketUser.Id);
                 await RespondAsync("Kunne ikke sende DM. Tjek dine DM-indstillinger og prøv igen.", ephemeral: true);
             }
         }
