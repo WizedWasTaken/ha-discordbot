@@ -94,12 +94,12 @@ namespace BotTemplate.BotCore.Services
                     foreach (var group in groupedItems)
                     {
                         var buyerName = group.Key;
-                        var buyerItems = string.Join("\n", group.Select(item => $"**Våben navn:** {item.Weapon.WeaponName}\n**Antal:** {item.Amount}\n"));
+                        var buyerItems = string.Join("", group.Select(item => $"**Våben navn:** {item.Weapon.WeaponName}\n**Antal:** {item.Amount}\n"));
                         var totalPrice = group.Sum(item => item.Weapon.WeaponPrice * item.Amount).ToString("N0", new CultureInfo("de-DE"));
                         var paid = group.All(item => item.Paid);
                         var delivered = group.All(item => item.DeliveredToUser);
 
-                        embedBuilder.AddField($"**__{buyerName}__**", $"Våben bestilling pris: {totalPrice} | Betalt: {(paid ? "Ja" : "Nej")} | Leveret: {(delivered ? "Ja" : "Nej")}", inline: false);
+                        embedBuilder.AddField($"**__{buyerName}__**", $"Våben bestilling pris: {totalPrice}\nBetalt: {(paid ? "Ja" : "Nej")}\nLeveret: {(delivered ? "Ja" : "Nej")}", inline: false);
                         embedBuilder.AddField("Våben", buyerItems, inline: false);
                     }
 
@@ -109,7 +109,7 @@ namespace BotTemplate.BotCore.Services
                         return $"**{item.Weapon.WeaponName}** - {item.Amount} ({percentage:F2}%)";
                     }));
 
-                    embedBuilder.AddField("\n\n**__Våben liste__**", $"\n{listOfAllWeaponsAndAmountOrdered}", inline: false);
+                    embedBuilder.AddField("\n\n**__Våben liste__**\n\n", $"\n{listOfAllWeaponsAndAmountOrdered}", inline: false);
 
                     var embed = embedBuilder.Build();
 
