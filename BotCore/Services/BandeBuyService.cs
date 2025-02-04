@@ -69,10 +69,20 @@ namespace BotTemplate.BotCore.Services
                         return;
                     }
 
-                    if (_messageId == 0)
+                    if (_messageId != 0)
                     {
-                        IEnumerable<IMessage> messages = await channel.GetMessagesAsync(500).FlattenAsync();
-                        await ((ITextChannel)channel).DeleteMessagesAsync(messages);
+                        var oldMessage = await channel.GetMessageAsync(_messageId) as IUserMessage;
+                        if (oldMessage != null)
+                        {
+                            await oldMessage.DeleteAsync();
+                        }
+                    }
+
+                    // Delete all messages in channel
+                    var messages = await channel.GetMessagesAsync().FlattenAsync();
+                    foreach (var message in messages)
+                    {
+                        await message.DeleteAsync();
                     }
 
                     var embedBuilder = new EmbedBuilder()
@@ -158,33 +168,11 @@ namespace BotTemplate.BotCore.Services
                     }
                     embeds.Add(currentEmbedBuilder.Build());
 
-                    if (_messageId == 0)
+                    foreach (var embed in embeds)
                     {
-                        foreach (var embed in embeds)
-                        {
-                            var newMessage = await channel.SendMessageAsync(embed: embed);
-                            _messageId = newMessage.Id;
-                            _logger.LogInformation("New message sent with ID: {MessageId}", _messageId);
-                        }
-                    }
-                    else
-                    {
-                        var message = await channel.GetMessageAsync(_messageId) as IUserMessage;
-                        if (message == null)
-                        {
-                            foreach (var embed in embeds)
-                            {
-                                var newMessage = await channel.SendMessageAsync(embed: embed);
-                                _messageId = newMessage.Id;
-                                _logger.LogInformation("Message not found, new message sent with ID: {MessageId}", _messageId);
-                            }
-                        }
-                        else
-                        {
-                            // Update the existing message with the new embed
-                            await message.ModifyAsync(msg => msg.Embed = embeds.First());
-                            _logger.LogInformation("Message updated with ID: {MessageId}", _messageId);
-                        }
+                        var newMessage = await channel.SendMessageAsync(embed: embed);
+                        _messageId = newMessage.Id;
+                        _logger.LogInformation("New message sent with ID: {MessageId}", _messageId);
                     }
                 }
                 catch (Exception ex)
