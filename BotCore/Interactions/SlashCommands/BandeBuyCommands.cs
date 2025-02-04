@@ -284,12 +284,6 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 return;
             }
 
-            if (latestBandeBuyEvent.EventDate <= DateTime.Now.AddDays(1))
-            {
-                await RespondAsync("Våben bestillingen er desværre lagt.", ephemeral: true);
-                return;
-            }
-
             // Get the order record for this user and weapon
             var orderRecord = _boughtWeaponRepository.GetWeaponOrderedByUser(weapon, user);
             if (orderRecord == null)
