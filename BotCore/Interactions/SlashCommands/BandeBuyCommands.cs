@@ -90,7 +90,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 return;
             }
 
-            if (latestBandeBuyEvent.EventDate < DateTime.Now)
+            if (latestBandeBuyEvent.EventDate <= DateTime.Now)
             {
                 await FollowupAsync("Våben bestillingen er desværre lagt.", ephemeral: true);
                 return;
