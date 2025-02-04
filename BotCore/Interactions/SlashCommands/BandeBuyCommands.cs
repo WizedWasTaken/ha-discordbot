@@ -246,6 +246,104 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             _ = _bandeBuyService.ReloadMessage();
         }
 
+        [SlashCommand("removeweaponadmin", "Slet våben fra dine våben bestillinger.")]
+        [RequireRole("SGT At Arms")]
+        public async Task DeleteWeaponOrderAdmin(WeaponName weaponName, string amount, string discordId, string reason)
+        {
+            var originalUser = await _userRepository.GetByDiscordIdAsync(Context.User.Id);
+            var user = await _userRepository.GetByDiscordIdAsync(ulong.Parse(discordId));
+            var weapon = await _boughtWeaponRepository.GetByWeaponNameAsync(weaponName);
+
+            if (user == null)
+            {
+                await RespondAsync("Brugeren er ikke registreret.", ephemeral: true);
+                return;
+            }
+
+            if (weapon == null)
+            {
+                await RespondAsync("Våbenet blev ikke fundet.", ephemeral: true);
+                return;
+            }
+
+            if (!int.TryParse(amount, out int removeAmount))
+            {
+                await RespondAsync("Ugyldigt antal.", ephemeral: true);
+                return;
+            }
+
+            if (removeAmount <= 0)
+            {
+                await RespondAsync("Antal skal være større end 0.", ephemeral: true);
+                return;
+            }
+
+            var latestBandeBuyEvent = await _eventRepository.GetLatestBandeBuyEventAsync();
+            if (latestBandeBuyEvent == null)
+            {
+                await RespondAsync("Der er ikke nogen bande buy event.", ephemeral: true);
+                return;
+            }
+
+            // Get the order record for this user and weapon
+            var orderRecord = _boughtWeaponRepository.GetWeaponOrderedByUser(weapon, user);
+            if (orderRecord == null)
+            {
+                await RespondAsync($"{user.IngameName} har ikke bestilt nogle {weaponName}", ephemeral: true);
+                return;
+            }
+
+            // Check if the user is trying to remove more than what is currently ordered
+            if (removeAmount > orderRecord.Amount)
+            {
+                await RespondAsync($"${user.IngameName} har kun bestilt {orderRecord.Amount} {weaponName}.", ephemeral: true);
+                return;
+            }
+
+            // Subtract the removal amount from the order
+            orderRecord.Amount -= removeAmount;
+
+            // If the amount goes to zero, remove the record (if that's your desired behavior)
+            if (orderRecord.Amount == 0)
+            {
+                _boughtWeaponRepository.Delete(orderRecord);
+                await RespondAsync($"${user.IngameName}'s bestilling for {weaponName} er helt fjernet.", ephemeral: true);
+            }
+            else
+            {
+                _boughtWeaponRepository.Update(orderRecord);
+                await RespondAsync($"{user.IngameName}'s {removeAmount} {weaponName} er fjernet fra bestillingen.\nDu har nu {orderRecord.Amount} {weaponName} bestilt.", ephemeral: true);
+            }
+
+            if (reason == null)
+            {
+                reason = "Ingen grund angivet.";
+            }
+
+            // Send a DM to the user
+            var socketUser = Context.Guild.GetUser(user.DiscordId);
+            if (socketUser != null)
+            {
+                try
+                {
+                    var embed = new EmbedBuilder()
+                        .WithTitle("Våbenbestilling Fjernet")
+                        .WithDescription($"Din bestilling for {removeAmount} {weaponName} er blevet fjernet af {originalUser.IngameName}.")
+                        .AddField("Grund", reason, inline: false)
+                        .WithColor(Color.Red)
+                        .Build();
+
+                    await socketUser.SendMessageAsync(embed: embed);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send DM to user {UserId}.", socketUser.Id);
+                }
+            }
+
+            _ = _bandeBuyService.ReloadMessage();
+        }
+
         [SlashCommand("removeweapon", "Slet våben fra dine våben bestillinger.")]
         [RequireRole("Bandebuy Adgang")]
         public async Task DeleteWeaponOrder(WeaponName weaponName, string amount)
