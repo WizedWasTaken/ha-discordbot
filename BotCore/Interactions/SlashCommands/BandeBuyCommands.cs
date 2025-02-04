@@ -90,12 +90,6 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 return;
             }
 
-            if (latestBandeBuyEvent.EventDate <= DateTime.Now.AddDays(1))
-            {
-                await FollowupAsync("Våben bestillingen er desværre lagt.", ephemeral: true);
-                return;
-            }
-
             var weaponLimitLeft = await _boughtWeaponRepository.GetWeaponLimitLeftAsync(weaponName);
             if (weaponLimitLeft == 0)
             {
@@ -166,12 +160,6 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             if (latestBandeBuyEvent == null)
             {
                 await RespondAsync("Der er ikke nogen bande buy event.", ephemeral: true);
-                return;
-            }
-
-            if (latestBandeBuyEvent.EventDate < DateTime.Now.AddDays(1))
-            {
-                await RespondAsync("Våben bestillingen er desværre lagt.", ephemeral: true);
                 return;
             }
 
