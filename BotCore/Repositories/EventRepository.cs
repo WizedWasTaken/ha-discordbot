@@ -129,15 +129,17 @@ namespace BotTemplate.BotCore.Repositories
 
         public async Task<Event> GetLatestBandeBuyEventAsync()
         {
-            return await context.Events
+            var res = await context.Events
                 .Include(e => e.MadeBy)
                 .Include(e => e.WeaponsBought)
                     .ThenInclude(wp => wp.User)
                 .Include(e => e.WeaponsBought)
                     .ThenInclude(wp => wp.Weapon)
-                .Where(e => e.EventType == EventType.BandeBuy && e.EventDate > System.DateTime.Now)
+                .Where(e => e.EventType == EventType.BandeBuy && e.EventDate > System.DateTime.Now.AddDays(1))
                 .OrderBy(e => e.EventDate)
                 .FirstOrDefaultAsync();
+
+            return res;
         }
 
         public override void Delete(Event entity)
