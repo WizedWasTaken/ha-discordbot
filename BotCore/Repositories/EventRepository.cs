@@ -135,7 +135,7 @@ namespace BotTemplate.BotCore.Repositories
                     .ThenInclude(wp => wp.User)
                 .Include(e => e.WeaponsBought)
                     .ThenInclude(wp => wp.Weapon)
-                .Where(e => e.EventType == EventType.BandeBuy && e.EventDate > System.DateTime.Now.AddDays(1))
+                .Where(e => e.EventType == EventType.BandeBuy && e.EventDate > System.DateTime.Now.AddDays(2))
                 .OrderBy(e => e.EventDate)
                 .FirstOrDefaultAsync();
 
