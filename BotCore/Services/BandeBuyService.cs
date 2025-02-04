@@ -20,7 +20,8 @@ namespace BotTemplate.BotCore.Services
         private readonly DiscordSocketClient _discordClient;
         private readonly ulong _channelId;
         private ulong _messageId;
-        private IEventRepository _eventRepository;
+        private readonly IEventRepository _eventRepository;
+        private bool _disposed;
 
         public BandeBuyService(ILogger<BandeBuyService> logger, IServiceProvider serviceProvider, DiscordSocketClient discordClient, ulong channelId, ulong messageId, IEventRepository eventRepository)
         {
@@ -34,11 +35,10 @@ namespace BotTemplate.BotCore.Services
             _discordClient.Ready += OnReadyAsync;
         }
 
-        private Task OnReadyAsync()
+        private async Task OnReadyAsync()
         {
-            ReloadMessage();
+            await ReloadMessage();
             _logger.LogInformation("BandeBuyService is ready.");
-            return Task.CompletedTask;
         }
 
         public async Task ReloadMessage()
@@ -49,8 +49,6 @@ namespace BotTemplate.BotCore.Services
                 try
                 {
                     var weaponsBought = await weaponRepository.GetWeaponsBoughtAsync();
-
-                    var totalWeaponsBought = weaponsBought.Sum(item => item.Amount);
                     var totalWeaponPrice = weaponsBought.Sum(item => item.Weapon.WeaponPrice * item.Amount);
 
                     var guild = _discordClient.Guilds.FirstOrDefault();
@@ -90,6 +88,7 @@ namespace BotTemplate.BotCore.Services
                     };
 
                     var groupedItems = weaponsBought.GroupBy(item => item.User.IngameName);
+                    var fields = new List<EmbedFieldBuilder>();
 
                     foreach (var group in groupedItems)
                     {
@@ -99,8 +98,18 @@ namespace BotTemplate.BotCore.Services
                         var paid = group.All(item => item.Paid);
                         var delivered = group.All(item => item.DeliveredToUser);
 
-                        embedBuilder.AddField($"\n\n**__{buyerName}__**", $"**Våben bestilling pris:** {totalPrice}\n**Betalt:** {(paid ? "Ja" : "Nej")}\n**Leveret:** {(delivered ? "Ja" : "Nej")}", inline: false);
-                        embedBuilder.AddField("Våben", buyerItems, inline: false);
+                        fields.Add(new EmbedFieldBuilder
+                        {
+                            Name = $"\n\n**__{buyerName}__**",
+                            Value = $"**Våben bestilling pris:** {totalPrice}\n**Betalt:** {(paid ? "Ja" : "Nej")}\n**Leveret:** {(delivered ? "Ja" : "Nej")}",
+                            IsInline = false
+                        });
+                        fields.Add(new EmbedFieldBuilder
+                        {
+                            Name = "Våben",
+                            Value = buyerItems,
+                            IsInline = false
+                        });
                     }
 
                     var groupedWeapons = weaponsBought
@@ -118,29 +127,62 @@ namespace BotTemplate.BotCore.Services
                         return $"**{group.WeaponName}** | **Antal:** {group.TotalAmount} stk. ({percentage:F2}%)";
                     }));
 
-                    embedBuilder.AddField("\n\n\n\n**__Våben liste__**\n\n", $"\n{listOfAllWeaponsAndAmountOrdered}", inline: false);
+                    fields.Add(new EmbedFieldBuilder
+                    {
+                        Name = "\n\n\n\n**__Våben liste__**\n\n",
+                        Value = $"\n{listOfAllWeaponsAndAmountOrdered}",
+                        IsInline = false
+                    });
 
-                    var embed = embedBuilder.Build();
+                    // Split fields into multiple embeds if necessary
+                    var embeds = new List<Embed>();
+                    var currentEmbedBuilder = new EmbedBuilder()
+                        .WithTitle(embedBuilder.Title)
+                        .WithColor((Color)embedBuilder.Color)
+                        .WithThumbnailUrl(embedBuilder.ThumbnailUrl)
+                        .WithFooter(embedBuilder.Footer)
+                        .AddField(embedBuilder.Fields.First());
+
+                    foreach (var field in fields)
+                    {
+                        if (currentEmbedBuilder.Fields.Count >= 25)
+                        {
+                            embeds.Add(currentEmbedBuilder.Build());
+                            currentEmbedBuilder = new EmbedBuilder()
+                                .WithTitle(embedBuilder.Title)
+                                .WithColor((Color)embedBuilder.Color)
+                                .WithThumbnailUrl(embedBuilder.ThumbnailUrl)
+                                .WithFooter(embedBuilder.Footer);
+                        }
+                        currentEmbedBuilder.AddField(field);
+                    }
+                    embeds.Add(currentEmbedBuilder.Build());
 
                     if (_messageId == 0)
                     {
-                        var newMessage = await channel.SendMessageAsync(embed: embed);
-                        _messageId = newMessage.Id;
-                        _logger.LogInformation("New message sent with ID: {MessageId}", _messageId);
+                        foreach (var embed in embeds)
+                        {
+                            var newMessage = await channel.SendMessageAsync(embed: embed);
+                            _messageId = newMessage.Id;
+                            _logger.LogInformation("New message sent with ID: {MessageId}", _messageId);
+                        }
                     }
                     else
                     {
                         var message = await channel.GetMessageAsync(_messageId) as IUserMessage;
                         if (message == null)
                         {
-                            var newMessage = await channel.SendMessageAsync(embed: embed);
-                            _messageId = newMessage.Id;
-                            _logger.LogInformation("Message not found, new message sent with ID: {MessageId}", _messageId);
+                            foreach (var embed in embeds)
+                            {
+                                var newMessage = await channel.SendMessageAsync(embed: embed);
+                                _messageId = newMessage.Id;
+                                _logger.LogInformation("Message not found, new message sent with ID: {MessageId}", _messageId);
+                            }
                         }
                         else
                         {
                             // Update the existing message with the new embed
-                            await message.ModifyAsync(msg => msg.Embed = embed);
+                            await message.ModifyAsync(msg => msg.Embed = embeds.First());
                             _logger.LogInformation("Message updated with ID: {MessageId}", _messageId);
                         }
                     }
@@ -163,8 +205,22 @@ namespace BotTemplate.BotCore.Services
             return Task.CompletedTask;
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources here
+                }
+                _disposed = true;
+            }
+        }
+
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }
