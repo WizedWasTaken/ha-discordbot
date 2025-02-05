@@ -122,9 +122,11 @@ namespace BotTemplate.BotCore.Repositories
                 .Include(e => e.MadeBy)
                 .Include(e => e.WeaponsBought)
                     .ThenInclude(bw => bw.User)
-                    .Include(e => e.WeaponsBought)
+                .Include(e => e.WeaponsBought)
                     .ThenInclude(bw => bw.Weapon)
-                .FirstOrDefault(e => e.EventType == EventType.BandeBuy);
+                .Where(e => e.EventType == EventType.BandeBuy && e.EventDate >= DateTime.Now)
+                .OrderByDescending(e => e.EventDate)
+                .FirstOrDefault();
         }
 
         public async Task<Event> GetLatestBandeBuyEventAsync()

@@ -30,35 +30,36 @@ namespace BotTemplate.BotCore.Interactions.Buttons
         {
             await DeferAsync(ephemeral: true);
             await DeleteOriginalResponseAsync();
-            // Cast the interaction to SocketMessageComponent to get access to the CustomId.
             var componentInteraction = (SocketMessageComponent)Context.Interaction;
             var customId = componentInteraction.Data.CustomId; // e.g., "confirm_order_Pistol9mm_3"
 
             var parts = customId.Split('_');
             if (parts.Length < 4)
             {
+                _logger.LogError("Invalid customId format: {CustomId}", customId);
                 await FollowupAsync("Der opstod en fejl under behandlingen af din bestilling.", ephemeral: true);
                 return;
             }
 
-            // Here, parts[2] is the weapon name and parts[3] is the weapon amount.
             if (!Enum.TryParse<WeaponName>(parts[2], out var weaponName))
             {
+                _logger.LogError("Invalid weapon name: {WeaponName}", parts[2]);
                 await FollowupAsync("Ugyldigt våben navn.", ephemeral: true);
                 return;
             }
 
             if (!int.TryParse(parts[3], out int weaponAmount))
             {
+                _logger.LogError("Invalid weapon amount: {WeaponAmount}", parts[3]);
                 await FollowupAsync("Ugyldigt antal våben.", ephemeral: true);
                 return;
             }
 
-            // Proceed with the rest of your logic...
             var user = _userRepository.GetByDiscordId(Context.User.Id);
             var weapon = _boughtWeaponRepository.GetWeaponByName(weaponName);
             if (user == null || weapon == null)
             {
+                _logger.LogError("User or weapon not found. User: {UserId}, Weapon: {WeaponName}", Context.User.Id, weaponName);
                 await FollowupAsync("Der opstod en fejl under behandlingen af din bestilling.", ephemeral: true);
                 return;
             }
@@ -66,36 +67,35 @@ namespace BotTemplate.BotCore.Interactions.Buttons
             var latestBandeBuyEvent = await _eventRepository.GetLatestBandeBuyEventAsync();
             if (latestBandeBuyEvent == null)
             {
+                _logger.LogError("No BandeBuy event found.");
                 await FollowupAsync("Der er ikke nogen bande buy event.", ephemeral: true);
                 return;
             }
 
-            // Check if the weapon already exists in the WeaponsBought collection
             var existingBoughtWeapon = latestBandeBuyEvent.WeaponsBought
                 .FirstOrDefault(bw => bw.Weapon.WeaponName == weaponName && bw.User.UserId == user.UserId);
 
             if (existingBoughtWeapon != null)
             {
-                // Update the existing BoughtWeapon entity
                 existingBoughtWeapon.Amount += weaponAmount;
+                _logger.LogInformation("Updated existing weapon order. User: {UserId}, Weapon: {WeaponName}, Amount: {Amount}", user.UserId, weaponName, existingBoughtWeapon.Amount);
             }
             else
             {
-                // Create a new BoughtWeapon entity
                 var boughtWeapon = new BoughtWeapon
                 {
                     Weapon = weapon,
                     Amount = weaponAmount,
                     User = user
                 };
-
                 latestBandeBuyEvent.WeaponsBought.Add(boughtWeapon);
+                _logger.LogInformation("Added new weapon order. User: {UserId}, Weapon: {WeaponName}, Amount: {Amount}", user.UserId, weaponName, weaponAmount);
             }
 
             _eventRepository.Update(latestBandeBuyEvent);
+            _logger.LogInformation("BandeBuy event updated successfully.");
 
             await FollowupAsync($"Dine {weaponAmount} {weaponName} er tilføjet til bestillingen. Det koster dig {(weapon.WeaponPrice * weaponAmount).ToString("N0", new CultureInfo("de-DE"))}.", ephemeral: true);
-            _bandeBuyService.ReloadMessage();
         }
 
         [ComponentInteraction("cancel_order_*", runMode: RunMode.Async)]
@@ -103,7 +103,7 @@ namespace BotTemplate.BotCore.Interactions.Buttons
         {
             await DeleteOriginalResponseAsync();
             await RespondAsync("Din bestilling er blevet annulleret.", ephemeral: true);
-            _bandeBuyService.ReloadMessage();
+            _logger.LogInformation("Order cancelled by user: {UserId}", Context.User.Id);
         }
 
         [ComponentInteraction("event_coming:*", runMode: RunMode.Async)]
@@ -114,18 +114,19 @@ namespace BotTemplate.BotCore.Interactions.Buttons
 
             if (eventEntity == null)
             {
+                _logger.LogError("Event not found. EventId: {EventId}", eventId);
                 await RespondAsync("Eventet blev ikke fundet.", ephemeral: true);
                 return;
             }
 
-            // Add the user to the participants list
             var participant = _userRepository.GetByDiscordId(user.Id);
             if (eventEntity.Participants?.Contains(participant) == true)
             {
-                await RespondAsync("Du fjernede din registrering som deltagende.", ephemeral: true);
                 eventEntity.Participants.Remove(participant);
                 _eventRepository.Update(eventEntity);
                 await UpdateEventMessage(eventEntity);
+                await RespondAsync("Du fjernede din registrering som deltagende.", ephemeral: true);
+                _logger.LogInformation("User removed from participants. User: {UserId}, EventId: {EventId}", user.Id, eventId);
                 return;
             }
 
@@ -136,9 +137,9 @@ namespace BotTemplate.BotCore.Interactions.Buttons
 
             eventEntity.Participants.Add(participant);
             _eventRepository.Update(eventEntity);
-
             await UpdateEventMessage(eventEntity);
             await RespondAsync("Du er nu registreret som deltagende.", ephemeral: true);
+            _logger.LogInformation("User added to participants. User: {UserId}, EventId: {EventId}", user.Id, eventId);
         }
 
         [ComponentInteraction("event_not_coming:*", runMode: RunMode.Async)]
@@ -149,26 +150,27 @@ namespace BotTemplate.BotCore.Interactions.Buttons
 
             if (eventEntity == null)
             {
+                _logger.LogError("Event not found. EventId: {EventId}", eventId);
                 await RespondAsync("Eventet blev ikke fundet.", ephemeral: true);
                 return;
             }
 
-            // Get the participant from the user repository
             var participant = _userRepository.GetByDiscordId(user.Id);
 
             if (participant == null)
             {
+                _logger.LogError("User not found. UserId: {UserId}", user.Id);
                 await RespondAsync("Du er ikke registreret som bruger.", ephemeral: true);
                 return;
             }
 
-            // Check if the user is already marked as absent
             if (eventEntity.Absent?.Contains(participant) == true)
             {
-                await RespondAsync("Du fjernede din registrering som fraværende.", ephemeral: true);
                 eventEntity.Absent.Remove(participant);
                 _eventRepository.Update(eventEntity);
                 await UpdateEventMessage(eventEntity);
+                await RespondAsync("Du fjernede din registrering som fraværende.", ephemeral: true);
+                _logger.LogInformation("User removed from absentees. User: {UserId}, EventId: {EventId}", user.Id, eventId);
                 return;
             }
 
@@ -177,12 +179,11 @@ namespace BotTemplate.BotCore.Interactions.Buttons
                 eventEntity.Participants.Remove(participant);
             }
 
-            // Add the user to the absent list
             eventEntity.Absent.Add(participant);
             _eventRepository.Update(eventEntity);
-
             await UpdateEventMessage(eventEntity);
             await RespondAsync("Du blev registreret som fraværende.", ephemeral: true);
+            _logger.LogInformation("User added to absentees. User: {UserId}, EventId: {EventId}", user.Id, eventId);
         }
 
         private async Task UpdateEventMessage(Event eventEntity)
@@ -195,7 +196,16 @@ namespace BotTemplate.BotCore.Interactions.Buttons
                 {
                     var embed = CreateEventEmbed(eventEntity);
                     await message.ModifyAsync(msg => msg.Embed = embed.Build());
+                    _logger.LogInformation("Event message updated. EventId: {EventId}", eventEntity.EventId);
                 }
+                else
+                {
+                    _logger.LogError("Message not found. MessageId: {MessageId}", eventEntity.MessageID);
+                }
+            }
+            else
+            {
+                _logger.LogError("Channel not found. ChannelId: {ChannelId}", 1335783333006938132);
             }
         }
 

@@ -64,16 +64,16 @@ namespace BotTemplate.BotCore.Repositories
         public async Task<int> GetWeaponLimitLeftAsync(WeaponName weaponName)
         {
             var weapon = await GetByWeaponNameAsync(weaponName);
-            var boughtWeapons = await context.BoughtWeapons
-                .Where(x => x.Weapon.WeaponName == weaponName)
-                .ToListAsync();
-
             var latestEvent = await _eventRepository.GetLatestBandeBuyEventAsync();
+            var boughtWeapons = latestEvent.WeaponsBought
+                .Where(x => x.Weapon.WeaponName == weaponName)
+                .ToList();
+
             var eventWeapons = latestEvent?.WeaponsBought
                 .Where(x => x.Weapon.WeaponName == weaponName)
                 .ToList() ?? new List<BoughtWeapon>();
 
-            var boughtAmount = boughtWeapons.Sum(x => x.Amount);
+            var boughtAmount = boughtWeapons.Sum(x => x.Amount) + eventWeapons.Sum(x => x.Amount);
 
             return weapon.WeaponLimit - boughtAmount;
         }

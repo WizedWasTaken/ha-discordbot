@@ -19,8 +19,9 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
         private readonly IEventRepository _eventRepository;
         private readonly BandeBuyService _bandeBuyService;
         private readonly IBoughtWeaponRepository _boughtWeaponRepository;
+        private readonly IPaidAmountRepository _paidAmountRepository;
 
-        public BandeBuyCommands(ILogger<BandeBuyCommands> logger, IUserRepository userRepository, IBoughtWeaponRepository boughtWeaponRepository, IRepository<Weapon> weaponRepository, IEventRepository eventRepository, BandeBuyService bandeBuyService)
+        public BandeBuyCommands(ILogger<BandeBuyCommands> logger, IUserRepository userRepository, IBoughtWeaponRepository boughtWeaponRepository, IRepository<Weapon> weaponRepository, IEventRepository eventRepository, BandeBuyService bandeBuyService, IPaidAmountRepository paidAmountRepository)
         {
             _logger = logger;
             _userRepository = userRepository;
@@ -28,6 +29,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             _weaponRepository = weaponRepository;
             _eventRepository = eventRepository;
             _bandeBuyService = bandeBuyService;
+            _paidAmountRepository = paidAmountRepository;
         }
 
         [SlashCommand("createweapon", "Opret et våben")]
@@ -114,72 +116,6 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             await FollowupAsync($"Er du sikker på, at du vil købe {weaponAmount} {weaponName} for {(weapon.WeaponPrice * weaponAmount).ToString("N0", new CultureInfo("de-DE"))}?", components: component, ephemeral: true);
         }
 
-        [SlashCommand("ispayed", "Marker at en bruger har betalt for våben")]
-        public async Task IsPayedAsync(string discordId, bool isPayed)
-        {
-            var user = new User();
-            if (discordId == null)
-            {
-                discordId = Context.User.Id.ToString();
-            }
-            else
-            {
-                if (!ulong.TryParse(discordId, out ulong idToSearch))
-                {
-                    var errorEmbed = new EmbedBuilder()
-                        .WithTitle("Fejl")
-                        .WithDescription("Indtast et gyldigt heltal for Discord ID.")
-                        .WithColor(Color.Red)
-                        .Build();
-                    await RespondAsync(embed: errorEmbed, ephemeral: true);
-                    return;
-                }
-
-                user = await _userRepository.GetByDiscordIdAsync(idToSearch);
-
-                var socketUser = Context.Interaction.User as SocketGuildUser;
-                if (!socketUser.GuildPermissions.BanMembers)
-                {
-                    var errorEmbed = new EmbedBuilder()
-                        .WithTitle("Fejl")
-                        .WithDescription("Du har ikke tilladelse til at redigere dette.")
-                        .WithColor(Color.Red)
-                        .Build();
-                    await RespondAsync(embed: errorEmbed, ephemeral: true);
-                    return;
-                }
-            }
-
-            if (user == null)
-            {
-                await RespondAsync("Brugeren blev ikke fundet.", ephemeral: true);
-                return;
-            }
-
-            var latestBandeBuyEvent = await _eventRepository.GetLatestBandeBuyEventAsync();
-            if (latestBandeBuyEvent == null)
-            {
-                await RespondAsync("Der er ikke nogen bande buy event.", ephemeral: true);
-                return;
-            }
-
-            var weaponsBought = latestBandeBuyEvent.WeaponsBought.Where(x => x.User == user).ToList();
-            if (weaponsBought.Count == 0)
-            {
-                await RespondAsync("Brugeren har ikke bestilt nogle våben.", ephemeral: true);
-                return;
-            }
-
-            foreach (var weapon in weaponsBought)
-            {
-                weapon.Paid = isPayed;
-                _boughtWeaponRepository.Update(weapon);
-            }
-
-            await RespondAsync($"Brugeren har nu betalt for sine våben.", ephemeral: true);
-            _ = _bandeBuyService.ReloadMessage();
-        }
-
         [SlashCommand("isdelivered", "Marker alle våben som leveret")]
         public async Task IsDeliveredAsync(string discordId, bool isDelivered)
         {
@@ -243,7 +179,6 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             }
 
             await RespondAsync($"Brugeren har nu fået sine våben.", ephemeral: true);
-            _ = _bandeBuyService.ReloadMessage();
         }
 
         [SlashCommand("removeweaponadmin", "Slet våben fra dine våben bestillinger.")]
@@ -340,8 +275,6 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     _logger.LogError(ex, "Failed to send DM to user {UserId}.", socketUser.Id);
                 }
             }
-
-            _ = _bandeBuyService.ReloadMessage();
         }
 
         [SlashCommand("removeweapon", "Slet våben fra dine våben bestillinger.")]
@@ -411,8 +344,6 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 _boughtWeaponRepository.Update(orderRecord);
                 await RespondAsync($"Dine {removeAmount} {weaponName} er fjernet fra bestillingen.\nDu har nu {orderRecord.Amount} {weaponName} bestilt.", ephemeral: true);
             }
-
-            _ = _bandeBuyService.ReloadMessage();
         }
 
         [SlashCommand("help", "Få hjælp til bande buy.")]
@@ -480,6 +411,142 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 _logger.LogError(ex, "Failed to send weapon list to user {UserId} in DM.", socketUser.Id);
                 await RespondAsync("Kunne ikke sende DM. Tjek dine DM-indstillinger og prøv igen.", ephemeral: true);
             }
+        }
+
+        [SlashCommand("registerpayment", "Register en betaling.")]
+        [RequireRole("Ledelsen")]
+        public async Task RegisterPayment(string discordId, int amount)
+        {
+            var user = await _userRepository.GetByDiscordIdAsync(ulong.Parse(discordId));
+            var paidTo = await _userRepository.GetByDiscordIdAsync(Context.User.Id);
+            var latestBandeBuyEvent = await _eventRepository.GetLatestBandeBuyEventAsync();
+
+            if (latestBandeBuyEvent == null)
+            {
+                var errorEmbed = new EmbedBuilder()
+                    .WithTitle("Fejl")
+                    .WithDescription("Der er ikke nogen bande buy event.")
+                    .WithColor(Color.Red)
+                    .Build();
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
+                return;
+            }
+
+            if (user == null)
+            {
+                var errorEmbed = new EmbedBuilder()
+                    .WithTitle("Fejl")
+                    .WithDescription("Brugeren blev ikke fundet.")
+                    .WithColor(Color.Red)
+                    .Build();
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
+                return;
+            }
+
+            await _paidAmountRepository.CreateNewPaymentAsync(user, latestBandeBuyEvent, amount, paidTo);
+
+            var successEmbed = new EmbedBuilder()
+                .WithTitle("Betaling Registreret")
+                .WithDescription($"Betalingen på {amount} kr. er blevet registreret for {user.IngameName}.")
+                .WithColor(Color.Green)
+                .Build();
+            await RespondAsync(embed: successEmbed, ephemeral: true);
+        }
+
+        [SlashCommand("getpaidamount", "Se hvor meget en bruger har betalt.")]
+        [RequireRole("Ledelsen")]
+        public async Task GetPaidAmount(string discordId)
+        {
+            var user = await _userRepository.GetByDiscordIdAsync(ulong.Parse(discordId));
+            var latestBandeBuyEvent = await _eventRepository.GetLatestBandeBuyEventAsync();
+
+            if (latestBandeBuyEvent == null)
+            {
+                var errorEmbed = new EmbedBuilder()
+                    .WithTitle("Fejl")
+                    .WithDescription("Der er ikke nogen bande buy event.")
+                    .WithColor(Color.Red)
+                    .Build();
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
+                return;
+            }
+
+            if (user == null)
+            {
+                var errorEmbed = new EmbedBuilder()
+                    .WithTitle("Fejl")
+                    .WithDescription("Brugeren blev ikke fundet.")
+                    .WithColor(Color.Red)
+                    .Build();
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
+                return;
+            }
+
+            var paidAmount = await _paidAmountRepository.GetUserPaidAmountAsync(user, latestBandeBuyEvent);
+
+            if (paidAmount == null)
+            {
+                var infoEmbed = new EmbedBuilder()
+                    .WithTitle("Ingen Betaling")
+                    .WithDescription($"{user.IngameName} har ikke betalt noget.")
+                    .WithColor(Color.Orange)
+                    .Build();
+                await RespondAsync(embed: infoEmbed, ephemeral: true);
+                return;
+            }
+
+            var successEmbed = new EmbedBuilder()
+                .WithTitle("Betalingsoplysninger")
+                .WithDescription($"{user.IngameName} har betalt {paidAmount.Amount} kr.")
+                .WithColor(Color.Green)
+                .Build();
+            await RespondAsync(embed: successEmbed, ephemeral: true);
+        }
+
+        [SlashCommand("geteventpaidamounts", "Se alle betalinger for en bande buy event.")]
+        [RequireRole("Ledelsen")]
+        public async Task GetEventPaidAmounts(string eventTitle)
+        {
+            var bandeBuyEvent = _eventRepository.GetByTitle(eventTitle);
+
+            if (bandeBuyEvent == null)
+            {
+                bandeBuyEvent = await _eventRepository.GetLatestBandeBuyEventAsync();
+            }
+
+            if (bandeBuyEvent == null)
+            {
+                var errorEmbed = new EmbedBuilder()
+                    .WithTitle("Fejl")
+                    .WithDescription("Der er ikke nogen bande buy event.")
+                    .WithColor(Color.Red)
+                    .Build();
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
+                return;
+            }
+
+            var paidAmounts = await _paidAmountRepository.GetEventPaidAmountsAsync(bandeBuyEvent);
+
+            if (paidAmounts == null)
+            {
+                var infoEmbed = new EmbedBuilder()
+                    .WithTitle("Ingen Betalinger")
+                    .WithDescription("Der er ikke nogen betalinger.")
+                    .WithColor(Color.Orange)
+                    .Build();
+                await RespondAsync(embed: infoEmbed, ephemeral: true);
+                return;
+            }
+
+            var paidAmountsDict = await _paidAmountRepository.GetEventPaidAmountsDictAsync(bandeBuyEvent);
+            var paidAmountsList = string.Join("\n", paidAmountsDict.Select(x => $"{x.Key.IngameName} - {x.Value} kr."));
+
+            var successEmbed = new EmbedBuilder()
+                .WithTitle("Betalingsoplysninger")
+                .WithDescription($"Her er en liste over alle betalinger:\n{paidAmountsList}")
+                .WithColor(Color.Green)
+                .Build();
+            await RespondAsync(embed: successEmbed, ephemeral: true);
         }
     }
 }

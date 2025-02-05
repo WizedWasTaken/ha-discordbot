@@ -4,6 +4,7 @@ using BotTemplate.BotCore.DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BotTemplate.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250205155411_AddedPaidAmount")]
+    partial class AddedPaidAmount
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -128,32 +131,6 @@ namespace BotTemplate.Migrations
                     b.ToTable("Notes");
                 });
 
-            modelBuilder.Entity("BotTemplate.BotCore.Entities.PaidAmount", b =>
-                {
-                    b.Property<int>("PaidAmountId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PaidAmountId"));
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("BandeBuyEventEventId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PaidByUserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("PaidAmountId");
-
-                    b.HasIndex("BandeBuyEventEventId");
-
-                    b.HasIndex("PaidByUserId");
-
-                    b.ToTable("PaidAmounts");
-                });
-
             modelBuilder.Entity("BotTemplate.BotCore.Entities.Strike", b =>
                 {
                     b.Property<int>("StrikeId")
@@ -208,9 +185,6 @@ namespace BotTemplate.Migrations
                     b.Property<DateTime>("JoinDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("PaidAmountId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Role")
                         .HasColumnType("int");
 
@@ -219,8 +193,6 @@ namespace BotTemplate.Migrations
                     b.HasIndex("EventId");
 
                     b.HasIndex("EventId1");
-
-                    b.HasIndex("PaidAmountId");
 
                     b.ToTable("Users");
                 });
@@ -292,25 +264,6 @@ namespace BotTemplate.Migrations
                     b.Navigation("CreatedBy");
                 });
 
-            modelBuilder.Entity("BotTemplate.BotCore.Entities.PaidAmount", b =>
-                {
-                    b.HasOne("BotTemplate.BotCore.Entities.Event", "BandeBuyEvent")
-                        .WithMany()
-                        .HasForeignKey("BandeBuyEventEventId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("BotTemplate.BotCore.Entities.User", "PaidBy")
-                        .WithMany()
-                        .HasForeignKey("PaidByUserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("BandeBuyEvent");
-
-                    b.Navigation("PaidBy");
-                });
-
             modelBuilder.Entity("BotTemplate.BotCore.Entities.Strike", b =>
                 {
                     b.HasOne("BotTemplate.BotCore.Entities.User", "GivenBy")
@@ -339,10 +292,6 @@ namespace BotTemplate.Migrations
                     b.HasOne("BotTemplate.BotCore.Entities.Event", null)
                         .WithMany("Participants")
                         .HasForeignKey("EventId1");
-
-                    b.HasOne("BotTemplate.BotCore.Entities.PaidAmount", null)
-                        .WithMany("PaidTo")
-                        .HasForeignKey("PaidAmountId");
                 });
 
             modelBuilder.Entity("BotTemplate.BotCore.Entities.Event", b =>
@@ -352,11 +301,6 @@ namespace BotTemplate.Migrations
                     b.Navigation("Participants");
 
                     b.Navigation("WeaponsBought");
-                });
-
-            modelBuilder.Entity("BotTemplate.BotCore.Entities.PaidAmount", b =>
-                {
-                    b.Navigation("PaidTo");
                 });
 
             modelBuilder.Entity("BotTemplate.BotCore.Entities.User", b =>

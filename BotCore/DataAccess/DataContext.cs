@@ -17,6 +17,7 @@ namespace BotTemplate.BotCore.DataAccess
         public DbSet<BoughtWeapon> BoughtWeapons { get; set; }
         public DbSet<Weapon> Weapons { get; set; }
         public DbSet<Note> Notes { get; set; }
+        public DbSet<PaidAmount> PaidAmounts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,6 +36,20 @@ namespace BotTemplate.BotCore.DataAccess
             modelBuilder.Entity<Event>()
                 .Property(e => e.EventType)
                 .HasConversion<string>(); // Storing enum as string
+
+            modelBuilder.Entity<PaidAmount>()
+                .HasOne(p => p.PaidBy)
+                .WithMany()
+                .HasForeignKey("PaidByUserId")
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<PaidAmount>()
+                .HasOne(p => p.BandeBuyEvent)
+                .WithMany()
+                .HasForeignKey("BandeBuyEventEventId")
+                .OnDelete(DeleteBehavior.NoAction);
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }

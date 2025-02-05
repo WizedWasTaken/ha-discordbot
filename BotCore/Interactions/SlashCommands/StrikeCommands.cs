@@ -1,5 +1,6 @@
 ﻿using BotTemplate.BotCore.DataAccess;
 using BotTemplate.BotCore.Entities;
+using BotTemplate.BotCore.Helpers;
 using BotTemplate.BotCore.Repositories;
 using Discord;
 using Discord.Interactions;
@@ -13,12 +14,14 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
     public class StrikeCommands : InteractionsCore
     {
         private readonly ILogger<StrikeCommands> _logger;
+        private readonly Microsoft.Extensions.Logging.ILogger _discordLogger; // Separate logger for Discord
         private readonly IUserRepository _userRepository;
         private readonly IStrikeRepository _strikeRepository;
 
-        public StrikeCommands(ILogger<StrikeCommands> logger, IUserRepository userRepository, IStrikeRepository strikeRepository)
+        public StrikeCommands(ILogger<StrikeCommands> logger, ILogger<Helpers.DiscordLogger> discordLogger, IUserRepository userRepository, IStrikeRepository strikeRepository)
         {
             _logger = logger;
+            _discordLogger = discordLogger;
             _userRepository = userRepository;
             _strikeRepository = strikeRepository;
         }
@@ -197,6 +200,9 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithColor(Color.Gold)
                     .Build();
                 await RespondAsync(embed: successEmbed, ephemeral: true);
+
+                // Log to Discord
+                _discordLogger.Log(LogLevel.Information, new EventId(), $"Strike created for user {user.IngameName} with reason: {reason}", null, (s, e) => s);
 
                 // Send DM to the user
                 var socketUser = Context.Client.GetUser(user.DiscordId);

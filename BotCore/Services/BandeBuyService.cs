@@ -10,6 +10,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace BotTemplate.BotCore.Services
 {
@@ -22,8 +23,11 @@ namespace BotTemplate.BotCore.Services
         private ulong _messageId;
         private readonly IEventRepository _eventRepository;
         private bool _disposed;
+        private System.Timers.Timer _timer;
+        private string _lastMessageContent;
+        private IPaidAmountRepository _paidAmountRepository;
 
-        public BandeBuyService(ILogger<BandeBuyService> logger, IServiceProvider serviceProvider, DiscordSocketClient discordClient, ulong channelId, ulong messageId, IEventRepository eventRepository)
+        public BandeBuyService(ILogger<BandeBuyService> logger, IServiceProvider serviceProvider, DiscordSocketClient discordClient, ulong channelId, ulong messageId, IEventRepository eventRepository, IPaidAmountRepository paidAmountRepository)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
@@ -33,15 +37,21 @@ namespace BotTemplate.BotCore.Services
             _eventRepository = eventRepository;
 
             _discordClient.Ready += OnReadyAsync;
+            _paidAmountRepository = paidAmountRepository;
         }
 
-        private async Task OnReadyAsync()
+        private async Task<Task> OnReadyAsync()
         {
             await ReloadMessage();
+            _timer = new System.Timers.Timer(TimeSpan.FromMinutes(1).TotalMilliseconds);
+            _timer.Elapsed += async (sender, e) => await ReloadMessage();
+            _timer.AutoReset = true;
+            _timer.Enabled = true;
             _logger.LogInformation("BandeBuyService is ready.");
+            return Task.CompletedTask;
         }
 
-        public async Task ReloadMessage()
+        private async Task ReloadMessage()
         {
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -69,22 +79,6 @@ namespace BotTemplate.BotCore.Services
                         return;
                     }
 
-                    if (_messageId != 0)
-                    {
-                        var oldMessage = await channel.GetMessageAsync(_messageId) as IUserMessage;
-                        if (oldMessage != null)
-                        {
-                            await oldMessage.DeleteAsync();
-                        }
-                    }
-
-                    // Delete all messages in channel
-                    var messages = await channel.GetMessagesAsync().FlattenAsync();
-                    foreach (var message in messages)
-                    {
-                        await message.DeleteAsync();
-                    }
-
                     var embedBuilder = new EmbedBuilder()
                         .WithTitle("BandeBuy liste")
                         .WithColor(Color.Green)
@@ -105,13 +99,14 @@ namespace BotTemplate.BotCore.Services
                         var buyerName = group.Key;
                         var buyerItems = string.Join("", group.Select(item => $"**Våben:** {item.Weapon.WeaponName} | **Antal:** {item.Amount}\n"));
                         var totalPrice = group.Sum(item => item.Weapon.WeaponPrice * item.Amount).ToString("N0", new CultureInfo("de-DE"));
-                        var paid = group.All(item => item.Paid);
+                        var payment = await _paidAmountRepository.GetUserPaidAmountAsync(group.First().User, latestBandeBuyEvent);
+                        var missingToPay = totalWeaponPrice - payment.Amount;
                         var delivered = group.All(item => item.DeliveredToUser);
 
                         fields.Add(new EmbedFieldBuilder
                         {
                             Name = $"\n\n**__{buyerName}__**",
-                            Value = $"**Våben bestilling pris:** {totalPrice}\n**Betalt:** {(paid ? "Ja" : "Nej")}\n**Leveret:** {(delivered ? "Ja" : "Nej")}",
+                            Value = $"**Våben bestilling pris:** {totalPrice}\n**Mangler at betale:** {missingToPay.ToString("N0", new CultureInfo("de-DE"))}\n**Leveret:** {(delivered ? "Ja" : "Nej")}",
                             IsInline = false
                         });
                         fields.Add(new EmbedFieldBuilder
@@ -168,12 +163,40 @@ namespace BotTemplate.BotCore.Services
                     }
                     embeds.Add(currentEmbedBuilder.Build());
 
+                    var newMessageContent = string.Join("\n", embeds.Select(embed => embed.Description));
+
+                    if (newMessageContent == _lastMessageContent)
+                    {
+                        _logger.LogInformation("No changes detected, skipping update.");
+                        return;
+                    }
+
+                    _lastMessageContent = newMessageContent;
+
+                    if (_messageId != 0)
+                    {
+                        var oldMessage = await channel.GetMessageAsync(_messageId) as IUserMessage;
+                        if (oldMessage != null)
+                        {
+                            await oldMessage.DeleteAsync();
+                        }
+                    }
+
+                    // Delete all messages in channel
+                    var messages = await channel.GetMessagesAsync().FlattenAsync();
+                    foreach (var message in messages)
+                    {
+                        await message.DeleteAsync();
+                    }
+
                     foreach (var embed in embeds)
                     {
                         var newMessage = await channel.SendMessageAsync(embed: embed);
                         _messageId = newMessage.Id;
                         _logger.LogInformation("New message sent with ID: {MessageId}", _messageId);
                     }
+
+                    _logger.LogInformation("Weapon purchase list updated successfully.");
                 }
                 catch (Exception ex)
                 {
@@ -185,11 +208,13 @@ namespace BotTemplate.BotCore.Services
         public Task StartAsync(CancellationToken cancellationToken)
         {
             // Do not start the timer here, it will be started in the OnReadyAsync method
+            _logger.LogInformation("BandeBuyService is starting.");
             return Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
+            _logger.LogInformation("BandeBuyService is stopping.");
             return Task.CompletedTask;
         }
 
@@ -199,7 +224,8 @@ namespace BotTemplate.BotCore.Services
             {
                 if (disposing)
                 {
-                    // Dispose managed resources here
+                    _timer?.Dispose();
+                    _logger.LogInformation("BandeBuyService timer disposed.");
                 }
                 _disposed = true;
             }
@@ -209,6 +235,7 @@ namespace BotTemplate.BotCore.Services
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+            _logger.LogInformation("BandeBuyService disposed.");
         }
     }
 }
