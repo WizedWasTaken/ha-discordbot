@@ -25,7 +25,7 @@ namespace BotTemplate.BotCore.Services
         private bool _disposed;
         private System.Timers.Timer _timer;
         private string _lastMessageContent;
-        private IPaidAmountRepository _paidAmountRepository;
+        private readonly IPaidAmountRepository _paidAmountRepository;
 
         public BandeBuyService(ILogger<BandeBuyService> logger, IServiceProvider serviceProvider, DiscordSocketClient discordClient, ulong channelId, ulong messageId, IEventRepository eventRepository, IPaidAmountRepository paidAmountRepository)
         {
@@ -35,20 +35,21 @@ namespace BotTemplate.BotCore.Services
             _channelId = channelId;
             _messageId = messageId;
             _eventRepository = eventRepository;
+            _paidAmountRepository = paidAmountRepository;
 
             _discordClient.Ready += OnReadyAsync;
-            _paidAmountRepository = paidAmountRepository;
+            _timer = new System.Timers.Timer();
+            _lastMessageContent = string.Empty;
         }
 
-        private async Task<Task> OnReadyAsync()
+        private async Task OnReadyAsync()
         {
             await ReloadMessage();
-            _timer = new System.Timers.Timer(TimeSpan.FromMinutes(1).TotalMilliseconds);
+            _timer.Interval = TimeSpan.FromMinutes(1).TotalMilliseconds;
             _timer.Elapsed += async (sender, e) => await ReloadMessage();
             _timer.AutoReset = true;
             _timer.Enabled = true;
             _logger.LogInformation("BandeBuyService is ready.");
-            return Task.CompletedTask;
         }
 
         private async Task ReloadMessage()
@@ -100,7 +101,8 @@ namespace BotTemplate.BotCore.Services
                         var buyerItems = string.Join("", group.Select(item => $"**Våben:** {item.Weapon.WeaponName} | **Antal:** {item.Amount}\n"));
                         var totalPrice = group.Sum(item => item.Weapon.WeaponPrice * item.Amount).ToString("N0", new CultureInfo("de-DE"));
                         var payment = await _paidAmountRepository.GetUserPaidAmountAsync(group.First().User, latestBandeBuyEvent);
-                        var missingToPay = totalWeaponPrice - payment.Amount;
+                        var userTotalPrice = group.Sum(item => item.Weapon.WeaponPrice * item.Amount);
+                        var missingToPay = userTotalPrice - payment.Amount;
                         var delivered = group.All(item => item.DeliveredToUser);
 
                         fields.Add(new EmbedFieldBuilder
@@ -143,10 +145,10 @@ namespace BotTemplate.BotCore.Services
                     var embeds = new List<Embed>();
                     var currentEmbedBuilder = new EmbedBuilder()
                         .WithTitle(embedBuilder.Title)
-                        .WithColor((Color)embedBuilder.Color)
+                        .WithColor(embedBuilder.Color ?? Color.Default)
                         .WithThumbnailUrl(embedBuilder.ThumbnailUrl)
                         .WithFooter(embedBuilder.Footer)
-                        .AddField(embedBuilder.Fields.First());
+                        .AddField(embedBuilder.Fields[0]);
 
                     foreach (var field in fields)
                     {
@@ -155,23 +157,13 @@ namespace BotTemplate.BotCore.Services
                             embeds.Add(currentEmbedBuilder.Build());
                             currentEmbedBuilder = new EmbedBuilder()
                                 .WithTitle(embedBuilder.Title)
-                                .WithColor((Color)embedBuilder.Color)
+                                .WithColor(embedBuilder.Color ?? Color.Default)
                                 .WithThumbnailUrl(embedBuilder.ThumbnailUrl)
                                 .WithFooter(embedBuilder.Footer);
                         }
                         currentEmbedBuilder.AddField(field);
                     }
                     embeds.Add(currentEmbedBuilder.Build());
-
-                    var newMessageContent = string.Join("\n", embeds.Select(embed => embed.Description));
-
-                    if (newMessageContent == _lastMessageContent)
-                    {
-                        _logger.LogInformation("No changes detected, skipping update.");
-                        return;
-                    }
-
-                    _lastMessageContent = newMessageContent;
 
                     if (_messageId != 0)
                     {

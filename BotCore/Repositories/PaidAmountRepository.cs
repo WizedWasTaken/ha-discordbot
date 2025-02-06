@@ -160,7 +160,7 @@ namespace BotTemplate.BotCore.Repositories
             }
             else
             {
-                res.Amount = amount;
+                res.Amount += amount;
                 if (res.PaidTo == null)
                 {
                     res.PaidTo = new List<User>();

@@ -7,6 +7,7 @@ using Discord.Interactions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
 using System.Globalization;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace BotTemplate.BotCore.Interactions.SlashCommands
 {
