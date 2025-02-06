@@ -384,6 +384,12 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 .AddField("removeweapon", "Slet våben fra dine våben bestillinger.\nKræver: Bandebuy Adgang", inline: false)
                 .AddField("help", "Få hjælp til bande buy.", inline: false)
                 .AddField("seeweapons", "Se alle våben samt. priser i DM.", inline: false)
+                .AddField("registerpayment", "Register en betaling.\nKræver: Ledelsen", inline: false)
+                .AddField("getpaidamount", "Se hvor meget en bruger har betalt.\nKræver: Ledelsen", inline: false)
+                .AddField("close", "Luk bande buy bestillinger.\nKræver: Ledelsen", inline: false)
+                .AddField("getuserweapons", "Find brugerens våben i et bestemt bande buy.\nKræver: Ledelsen", inline: false)
+                .AddField("geteventpaidamounts", "Se alle betalinger for en bande buy event.\nKræver: Ledelsen", inline: false)
+                .AddField("removeweaponadmin", "Slet våben fra dine våben bestillinger.\nKræver: SGT At Arms", inline: false)
                 .WithColor(Color.Green)
                 .Build();
 
@@ -545,7 +551,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 closedDate = DateTime.UtcNow;
             }
 
-            var deliveryDate = closedDate.AddHours(96 - 40);
+            var deliveryDate = closedDate.AddHours(96);
 
             var topBuyer = latestBandeBuyEvent.WeaponsBought
                 .GroupBy(x => x.User)
