@@ -65,15 +65,12 @@ namespace BotTemplate.BotCore.Repositories
         {
             var weapon = await GetByWeaponNameAsync(weaponName);
             var latestEvent = await _eventRepository.GetLatestBandeBuyEventAsync();
-            var boughtWeapons = latestEvent.WeaponsBought
-                .Where(x => x.Weapon.WeaponName == weaponName)
-                .ToList();
 
             var eventWeapons = latestEvent?.WeaponsBought
                 .Where(x => x.Weapon.WeaponName == weaponName)
                 .ToList() ?? new List<BoughtWeapon>();
 
-            var boughtAmount = boughtWeapons.Sum(x => x.Amount) + eventWeapons.Sum(x => x.Amount);
+            var boughtAmount = eventWeapons.Sum(x => x.Amount);
 
             return weapon.WeaponLimit - boughtAmount;
         }
