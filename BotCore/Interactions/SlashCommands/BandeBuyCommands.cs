@@ -6,8 +6,10 @@ using Discord;
 using Discord.Interactions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
+using System;
 using System.Globalization;
 using static System.Formats.Asn1.AsnWriter;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace BotTemplate.BotCore.Interactions.SlashCommands
 {
@@ -90,6 +92,12 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             if (latestBandeBuyEvent == null)
             {
                 await FollowupAsync("Der er ikke nogen bande buy event.", ephemeral: true);
+                return;
+            }
+
+            if (latestBandeBuyEvent.EventStatus == EventStatus.Closed)
+            {
+                await FollowupAsync("Bande buy bestillingerne er lukket.", ephemeral: true);
                 return;
             }
 
@@ -316,6 +324,12 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 return;
             }
 
+            if (latestBandeBuyEvent.EventStatus == EventStatus.Closed)
+            {
+                await RespondAsync("Bande buy bestillingerne er lukket.", ephemeral: true);
+                return;
+            }
+
             // Get the order record for this user and weapon
             var orderRecord = _boughtWeaponRepository.GetWeaponOrderedByUser(weapon, user);
             if (orderRecord == null)
@@ -500,6 +514,163 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 .WithTitle("Betalingsoplysninger")
                 .WithDescription($"{user.IngameName} har betalt {paidAmount.Amount} kr.")
                 .WithColor(Color.Green)
+                .Build();
+            await RespondAsync(embed: successEmbed, ephemeral: true);
+        }
+
+        [SlashCommand("close", "Luk bande buy bestillinger.")]
+        [RequireRole("Ledelsen")]
+        public async Task CloseBandeBuy(int eventId, string closedDateString = null)
+        {
+            await DeferAsync();
+            var latestBandeBuyEvent = _eventRepository.Get(eventId);
+
+            if (latestBandeBuyEvent == null)
+            {
+                var errorEmbed = new EmbedBuilder()
+                    .WithTitle("Fejl")
+                    .WithDescription("Der er ikke nogen bande buy event.")
+                    .WithColor(Color.Red)
+                    .Build();
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
+                return;
+            }
+
+            latestBandeBuyEvent.EventStatus = EventStatus.Closed;
+            _eventRepository.Update(latestBandeBuyEvent);
+
+            DateTime closedDate;
+            if (string.IsNullOrEmpty(closedDateString) || !DateTime.TryParse(closedDateString, out closedDate))
+            {
+                closedDate = DateTime.UtcNow;
+            }
+
+            var deliveryDate = closedDate.AddHours(96 - 40);
+
+            var topBuyer = latestBandeBuyEvent.WeaponsBought
+                .GroupBy(x => x.User)
+                .Select(g => new
+                {
+                    UserName = g.Key.IngameName,
+                    TotalSpent = g.Sum(x => x.Weapon.WeaponPrice * x.Amount)
+                })
+                .OrderByDescending(x => x.TotalSpent)
+                .FirstOrDefault();
+
+            var weaponAmounts = string.Join("\n", latestBandeBuyEvent.WeaponsBought
+                .GroupBy(x => x.Weapon.WeaponName)
+                .Select(g => $"{g.Key}: {g.Sum(x => x.Amount).ToString("N0", new CultureInfo("de-DE"))}"));
+
+            var totalPriceList = string.Join("\n", latestBandeBuyEvent.WeaponsBought
+                .GroupBy(x => x.Weapon.WeaponName)
+                .Select(g => $"{g.Key}: {g.Sum(x => x.Weapon.WeaponPrice * x.Amount).ToString("N0", new CultureInfo("de-DE"))} DKK"));
+
+            var closedBy = await _userRepository.GetByDiscordIdAsync(Context.User.Id);
+
+            var globalEmbed = new EmbedBuilder()
+                .WithTitle("Bande Buy Lukket")
+                .WithDescription("Bande buy bestillingerne er nu lukket.")
+                .AddField("Event Titel", latestBandeBuyEvent.EventTitle, inline: true)
+                .AddField("Lukket Dato", $"<t:{new DateTimeOffset(closedDate).ToUnixTimeSeconds()}:F>", inline: true)
+                .AddField("Leverings Dato", $"<t:{new DateTimeOffset(deliveryDate).ToUnixTimeSeconds()}:R>", inline: true)
+                .AddField("Våben", weaponAmounts, inline: true)
+                .AddField("Total Pris", totalPriceList, inline: true)
+                .AddField("Top Køber", $"{topBuyer.UserName} - {topBuyer.TotalSpent.ToString("N0", new CultureInfo("de-DE"))} DKK", inline: false)
+                .AddField("Lukket af", closedBy.IngameName, inline: false)
+                .WithColor(Color.Red)
+                .Build();
+
+            var channel = Context.Guild.GetTextChannel(1337043225990397982);
+            await channel.SendMessageAsync(embed: globalEmbed);
+
+            // Send a DM to all users who have ordered weapons with a list of the weapons they have ordered and price.
+            var weaponsBought = latestBandeBuyEvent.WeaponsBought.GroupBy(x => x.User);
+
+            foreach (var group in weaponsBought)
+            {
+                var user = group.Key;
+                var weaponList = string.Join("\n", group.Select(x => $"**Våben:** {x.Weapon.WeaponName} | **Antal:** {x.Amount} | **Pris:** {(x.Weapon.WeaponPrice * x.Amount).ToString("N0", new CultureInfo("de-DE"))} DKK"));
+                var totalPrice = group.Sum(x => x.Weapon.WeaponPrice * x.Amount);
+                var totalPriceFormatted = totalPrice.ToString("N0", new CultureInfo("de-DE"));
+
+                var dmEmbed = new EmbedBuilder()
+                    .WithTitle("Dine Bande Buy Bestillinger")
+                    .WithDescription($"Her er en liste over de våben, du har bestilt:\n\n{weaponList}\n\n**Total pris:** {totalPriceFormatted} DKK")
+                    .WithColor(Color.Red)
+                    .Build();
+
+                try
+                {
+                    var userAccount = await _userRepository.GetByDiscordIdAsync(user.DiscordId);
+                    if (userAccount != null)
+                    {
+                        var socketUser = Context.Client.GetUser(userAccount.DiscordId);
+                        if (socketUser != null)
+                        {
+                            await socketUser.SendMessageAsync(embed: dmEmbed);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send DM to user {UserId}", user.DiscordId);
+                }
+            }
+
+            await FollowupAsync("Bande buy bestillingerne er nu lukket.", ephemeral: true);
+        }
+
+        [SlashCommand("getuserweapons", "Find brugerens våben i et bestemt bande buy")]
+        [RequireRole("Ledelsen")]
+        public async Task GetUserWeapons(string discordId, int eventId)
+        {
+            var user = await _userRepository.GetByDiscordIdAsync(ulong.Parse(discordId));
+            var bandeBuyEvent = _eventRepository.Get(eventId);
+
+            if (user == null)
+            {
+                var errorEmbed = new EmbedBuilder()
+                    .WithTitle("Fejl")
+                    .WithDescription("Brugeren blev ikke fundet.")
+                    .WithColor(Color.Red)
+                    .Build();
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
+                return;
+            }
+
+            if (bandeBuyEvent == null)
+            {
+                var errorEmbed = new EmbedBuilder()
+                    .WithTitle("Fejl")
+                    .WithDescription("Bande buy eventet blev ikke fundet.")
+                    .WithColor(Color.Red)
+                    .Build();
+                await RespondAsync(embed: errorEmbed, ephemeral: true);
+                return;
+            }
+
+            var weaponsBought = bandeBuyEvent.WeaponsBought.Where(x => x.User == user).ToList();
+
+            if (weaponsBought.Count == 0)
+            {
+                var infoEmbed = new EmbedBuilder()
+                    .WithTitle("Ingen Våben")
+                    .WithDescription($"{user.IngameName} har ikke bestilt nogle våben.")
+                    .WithColor(Color.Orange)
+                    .Build();
+                await RespondAsync(embed: infoEmbed, ephemeral: true);
+                return;
+            }
+
+            var weaponList = string.Join("\n", weaponsBought.Select(x => $"**Våben:** {x.Weapon.WeaponName} | **Antal:** {x.Amount} | **Pris:** {(x.Weapon.WeaponPrice * x.Amount).ToString("N0", new CultureInfo("de-DE"))} DKK"));
+            var discordUser = Context.Guild.GetUser(user.DiscordId);
+
+            var successEmbed = new EmbedBuilder()
+                .WithTitle("Brugerens Våben")
+                .WithDescription($"Her er en liste over de våben, {user.IngameName} har bestilt:\n\n{weaponList}")
+                .AddField("Total Pris", weaponsBought.Sum(x => x.Weapon.WeaponPrice * x.Amount).ToString("N0", new CultureInfo("de-DE")) + " DKK", inline: false)
+                .WithColor(Color.Green)
+                .WithAuthor(user.IngameName, discordUser.GetAvatarUrl())
                 .Build();
             await RespondAsync(embed: successEmbed, ephemeral: true);
         }

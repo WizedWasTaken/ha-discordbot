@@ -37,6 +37,10 @@ namespace BotTemplate.BotCore.DataAccess
                 .Property(e => e.EventType)
                 .HasConversion<string>(); // Storing enum as string
 
+            modelBuilder.Entity<Event>()
+                .Property(e => e.EventStatus)
+                .HasConversion<string>(); // Storing enum as string
+
             modelBuilder.Entity<PaidAmount>()
                 .HasOne(p => p.PaidBy)
                 .WithMany()

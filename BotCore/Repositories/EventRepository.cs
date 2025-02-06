@@ -11,6 +11,8 @@ namespace BotTemplate.BotCore.Repositories
     {
         Event GetLatest();
 
+        Event Get(int discordId);
+
         ICollection<Event> GetParticipating(ulong userId);
 
         ICollection<Event> GetDeclined(ulong userId);
@@ -57,6 +59,20 @@ namespace BotTemplate.BotCore.Repositories
             }
 
             return null;
+        }
+
+        public virtual Event Get(int discordId)
+        {
+            return context.Events
+                .Include(e => e.MadeBy)
+                .Include(e => e.WeaponsBought)
+                    .ThenInclude(bw => bw.User)
+                .Include(e => e.Participants)
+                .Include(e => e.Absent)
+                .Include(e => e.WeaponsBought)
+                    .ThenInclude(bw => bw.Weapon)
+                .OrderByDescending(e => e.EventDate)
+                .FirstOrDefault(e => e.EventId == discordId);
         }
 
         public ICollection<Event> GetParticipating(ulong userId)

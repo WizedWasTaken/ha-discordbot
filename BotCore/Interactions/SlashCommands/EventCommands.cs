@@ -135,12 +135,6 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             await DeferAsync(ephemeral: true);
             _logger.LogInformation("Viewing event...");
 
-            if (viewEvent == null)
-            {
-                await FollowupAsync("Der skete en fejl.", ephemeral: true);
-                return;
-            }
-
             List<Event> events = new();
 
             switch (viewEvent)
@@ -166,7 +160,8 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     break;
 
                 default:
-                    break;
+                    await FollowupAsync("Ugyldig visningstype.", ephemeral: true);
+                    return;
             }
 
             if (events.Count == 0)
@@ -179,26 +174,29 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
             var groupedEvents = events.GroupBy(e => e.EventType)
                                       .OrderBy(g => g.Key);
 
-            EmbedBuilder embed = new EmbedBuilder()
-                .WithTitle("Events")
-                .WithColor(Color.Red);
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.AppendLine("**Events:**");
 
             foreach (var group in groupedEvents)
             {
-                embed.AddField($"**{group.Key}**", "\u200B"); // Add a header for each event type
+                messageBuilder.AppendLine($"\n**{group.Key}**");
 
                 foreach (var e in group)
                 {
-                    embed.AddField(e.EventTitle, e.EventDescription)
-                         .AddField("Type", e.EventType.ToString(), true)
-                         .AddField("Dato", e.EventDate.ToString("dd/MM/yyyy"), true)
-                         .AddField("Lokation", e.EventLocation, true)
-                         .AddField("Oprettet af", e.MadeBy.IngameName, true)
-                         .AddField("\u200B", "\u200B"); // Add a blank field for spacing
+                    messageBuilder.AppendLine($"**Titel:** {e.EventTitle}");
+                    messageBuilder.AppendLine($"**Beskrivelse:** {e.EventDescription}");
+                    messageBuilder.AppendLine($"**Type:** {e.EventType}");
+                    messageBuilder.AppendLine($"**Dato:** {e.EventDate:dd/MM/yyyy}");
+                    messageBuilder.AppendLine($"**Lokation:** {e.EventLocation}");
+                    messageBuilder.AppendLine($"**Oprettet af:** {e.MadeBy.IngameName}");
+                    messageBuilder.AppendLine($"**ID:** {e.EventId}");
+                    messageBuilder.AppendLine($"**Besked:** <#{e.MessageID}>");
+                    messageBuilder.AppendLine();
                 }
             }
 
-            await FollowupAsync(embed: embed.Build(), ephemeral: true);
+            // Send the message
+            await FollowupAsync(messageBuilder.ToString(), ephemeral: true);
         }
 
         [SlashCommand("slet", "Sletter et event")]

@@ -35,6 +35,9 @@ namespace BotTemplate.BotCore.Entities
         [Required]
         public string MessageID { get; set; } = "";
 
+        [Required]
+        public EventStatus EventStatus { get; set; } = EventStatus.Open;
+
         public List<BoughtWeapon> WeaponsBought { get; set; } = new List<BoughtWeapon>();
 
         public bool CanAddWeaponToEvent()
@@ -46,6 +49,12 @@ namespace BotTemplate.BotCore.Entities
 
             return true;
         }
+    }
+
+    public enum EventStatus
+    {
+        Open,
+        Closed
     }
 
     public enum EventType
