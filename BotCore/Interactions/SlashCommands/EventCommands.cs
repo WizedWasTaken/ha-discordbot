@@ -24,28 +24,15 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
         }
 
         [SlashCommand("opret", "Opret nyt event")]
-        public async Task OpretEventAsync(EventType eventType, string titel, string beskrivelse, string lokation, bool tilladReaktioner, string dato)
+        public async Task OpretEventAsync(EventType eventType, string titel, string beskrivelse, string lokation, bool tilladReaktioner, DateTime dato, DateTime tidspunkt)
         {
             // Defer the interaction to prevent the interaction from timing out.
             await DeferAsync(ephemeral: true);
             _logger.LogInformation("Creating new event...");
 
-            if (string.IsNullOrEmpty(titel) || string.IsNullOrEmpty(beskrivelse) || string.IsNullOrEmpty(lokation) || string.IsNullOrEmpty(dato))
+            if (string.IsNullOrEmpty(titel) || string.IsNullOrEmpty(beskrivelse) || string.IsNullOrEmpty(lokation))
             {
                 await FollowupAsync("Alle felter skal udfyldes.", ephemeral: true);
-                return;
-            }
-
-            // Parse the date string to DateTime
-            if (!DateTime.TryParseExact(dato, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
-            {
-                await FollowupAsync("Invalidt dato format. Brug venligst: dd/MM/yyyy.", ephemeral: true);
-                return;
-            }
-
-            if (parsedDate < DateTime.Now)
-            {
-                await FollowupAsync("Datoen kan ikke være i fortiden.", ephemeral: true);
                 return;
             }
 
@@ -57,6 +44,9 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
 
             var user = _userRepository.GetByDiscordId(Context.User.Id);
 
+            // Combine dato and tidspunkt into a single DateTime object
+            var eventDate = new DateTime(dato.Year, dato.Month, dato.Day, tidspunkt.Hour, tidspunkt.Minute, tidspunkt.Second);
+
             // Create the event
             Event newEvent = new Event
             {
@@ -64,7 +54,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 EventTitle = titel,
                 EventDescription = beskrivelse,
                 EventLocation = lokation,
-                EventDate = parsedDate,
+                EventDate = eventDate,
                 MadeBy = user
             };
 
@@ -86,7 +76,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithTitle(newEvent.EventTitle)
                     .WithDescription(newEvent.EventDescription)
                     .AddField("Type", newEvent.EventType.ToString())
-                    .AddField("Dato", newEvent.EventDate.ToString("dd/MM/yyyy"))
+                    .AddField("Dato", $"<t:{new DateTimeOffset(newEvent.EventDate).ToUnixTimeSeconds()}:R>")
                     .WithColor(Color.Red);
 
                 embed.Footer = new EmbedFooterBuilder()
@@ -99,7 +89,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                     .WithTitle(newEvent.EventTitle)
                     .WithDescription(newEvent.EventDescription)
                     .AddField("Type", newEvent.EventType.ToString())
-                    .AddField("Dato", newEvent.EventDate.ToString("dd/MM/yyyy"))
+                    .AddField("Dato", $"<t:{new DateTimeOffset(newEvent.EventDate).ToUnixTimeSeconds()}:R>")
                     .AddField("Lokation", newEvent.EventLocation)
                     .WithColor(Color.Red);
 
