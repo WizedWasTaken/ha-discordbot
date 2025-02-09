@@ -44,8 +44,11 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
 
             var user = _userRepository.GetByDiscordId(Context.User.Id);
 
-            // Combine dato and tidspunkt into a single DateTime object
-            var eventDate = new DateTime(dato.Year, dato.Month, dato.Day, tidspunkt.Hour, tidspunkt.Minute, tidspunkt.Second);
+            var eventDate = new DateTime(dato.Year, dato.Month, dato.Day, tidspunkt.Hour, tidspunkt.Minute, tidspunkt.Second, DateTimeKind.Unspecified);
+
+            // Combine dato and tidspunkt into a single DateTime object with Utc kind
+            TimeZoneInfo copenhagenTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+            var eventDateCopenhagen = TimeZoneInfo.ConvertTimeToUtc(eventDate, copenhagenTimeZone);
 
             // Create the event
             Event newEvent = new Event
@@ -54,7 +57,7 @@ namespace BotTemplate.BotCore.Interactions.SlashCommands
                 EventTitle = titel,
                 EventDescription = beskrivelse,
                 EventLocation = lokation,
-                EventDate = eventDate,
+                EventDate = eventDateCopenhagen,
                 MadeBy = user
             };
 
