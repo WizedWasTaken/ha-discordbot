@@ -215,7 +215,7 @@ namespace BotTemplate.BotCore.Interactions.Buttons
                 .WithTitle(eventEntity.EventTitle)
                 .WithDescription(eventEntity.EventDescription)
                 .AddField("Type", eventEntity.EventType.ToString())
-                .AddField("Dato", eventEntity.EventDate.ToString("dd/MM/yyyy"))
+                .AddField("Dato", $"<t:{new DateTimeOffset(eventEntity.EventDate).ToUnixTimeSeconds()}:R>")
                 .WithColor(Color.Red);
 
             if (eventEntity.EventType != EventType.BandeBuy)
