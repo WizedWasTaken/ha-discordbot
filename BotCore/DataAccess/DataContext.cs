@@ -41,6 +41,44 @@ namespace BotTemplate.BotCore.DataAccess
                 .Property(e => e.EventStatus)
                 .HasConversion<string>(); // Storing enum as string
 
+            modelBuilder.Entity<Event>()
+    .HasOne(e => e.MadeBy)
+    .WithMany()
+    .HasForeignKey("MadeByUserId")
+    .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.ParticipatedEvents)
+                .WithMany(e => e.Participants)
+                .UsingEntity<Dictionary<string, object>>(
+                    "Attendances",
+                    j => j
+                        .HasOne<Event>()
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict),
+                    j => j
+                        .HasOne<User>()
+                        .WithMany()
+                        .HasForeignKey("AttendedUserId")
+                        .OnDelete(DeleteBehavior.Restrict));
+
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.AbsentEvents)
+                .WithMany(e => e.Absent)
+                .UsingEntity<Dictionary<string, object>>(
+                    "Absences",
+                    j => j
+                        .HasOne<Event>()
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict),
+                    j => j
+                        .HasOne<User>()
+                        .WithMany()
+                        .HasForeignKey("AbsentUserId")
+                        .OnDelete(DeleteBehavior.Restrict));
+
             modelBuilder.Entity<PaidAmount>()
                 .HasOne(p => p.PaidBy)
                 .WithMany()

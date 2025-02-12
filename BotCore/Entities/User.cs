@@ -27,5 +27,11 @@ namespace BotTemplate.BotCore.Entities
 
         [Required]
         public ICollection<Note> Notes { get; set; }
+
+        [Required]
+        public ICollection<Event> ParticipatedEvents { get; set; }
+
+        [Required]
+        public ICollection<Event> AbsentEvents { get; set; }
     }
 }
