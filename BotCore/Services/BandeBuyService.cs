@@ -98,8 +98,11 @@ namespace BotTemplate.BotCore.Services
                     foreach (var group in groupedItems)
                     {
                         var buyerName = group.Key;
-                        var buyerItems = string.Join("", group.Select(item => $"**Våben:** {item.Weapon.WeaponName} | **Antal:** {item.Amount}\n"));
-                        var totalPrice = group.Sum(item => item.Weapon.WeaponPrice * item.Amount).ToString("N0", new CultureInfo("de-DE"));
+                        var buyerItems = string.Join("", group
+                            .OrderBy(item => item.Weapon.WeaponName) // Sort by starting character
+                            .Select(item => $"**Våben:** {item.Weapon.WeaponName} | **Antal:** {item.Amount}\n"));
+                        var totalPrice = group.Sum(item => item.Weapon.WeaponPrice * item.Amount)
+                            .ToString("N0", new CultureInfo("de-DE"));
                         var payment = await _paidAmountRepository.GetUserPaidAmountAsync(group.First().User, latestBandeBuyEvent);
                         var userTotalPrice = group.Sum(item => item.Weapon.WeaponPrice * item.Amount);
                         var missingToPay = userTotalPrice - payment.Amount;
@@ -128,11 +131,13 @@ namespace BotTemplate.BotCore.Services
                             WeaponLimit = group.First().Weapon.WeaponLimit
                         });
 
-                    var listOfAllWeaponsAndAmountOrdered = string.Join("\n", groupedWeapons.Select(group =>
-                    {
-                        var percentage = (double)group.TotalAmount / group.WeaponLimit * 100;
-                        return $"**{group.WeaponName}** | **Antal:** {group.TotalAmount} stk. ({percentage:F2}%)";
-                    }));
+                    var listOfAllWeaponsAndAmountOrdered = string.Join("\n", groupedWeapons
+                        .OrderBy(group => group.WeaponName) // Sort by starting character
+                        .Select(group =>
+                        {
+                            var percentage = (double)group.TotalAmount / group.WeaponLimit * 100;
+                            return $"**{group.WeaponName}** | **Antal:** {group.TotalAmount} stk. ({percentage:F2}%)";
+                        }));
 
                     fields.Add(new EmbedFieldBuilder
                     {
