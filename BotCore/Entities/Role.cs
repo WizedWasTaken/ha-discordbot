@@ -16,6 +16,7 @@ namespace BotTemplate.BotCore.Entities
         RoadCaptain,
         Member,
         Prospect,
-        Hangaround
+        Hangaround,
+        PusherAnsvarlig,
     }
 }
